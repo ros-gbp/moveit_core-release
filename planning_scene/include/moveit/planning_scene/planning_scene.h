@@ -214,7 +214,21 @@ public:
   }
   /** \brief Get the set of fixed transforms from known frames to the planning frame */
   const robot_state::TransformsPtr& getTransformsNonConst();
+  
+  /** \brief Get the transform corresponding to the frame \e id. This will be known if \e id is a link name, an attached body id or a collision object.
+      Return identity when no transform is available. Use knowsFrameTransform() to test if this function will be successful or not. */
+  const Eigen::Affine3d& getFrameTransform(const std::string &id) const;
 
+  /** \brief Get the transform corresponding to the frame \e id. This will be known if \e id is a link name, an attached body id or a collision object.
+      Return identity when no transform is available. Use knowsFrameTransform() to test if this function will be successful or not. */
+  const Eigen::Affine3d& getFrameTransform(const robot_state::RobotState &state, const std::string &id) const;
+  
+  /** \brief Check if a transform to the frame \e id is known. This will be known if \e id is a link name, an attached body id or a collision object */
+  bool knowsFrameTransform(const std::string &id) const;
+
+  /** \brief Check if a transform to the frame \e id is known. This will be known if \e id is a link name, an attached body id or a collision object */
+  bool knowsFrameTransform(const robot_state::RobotState &state, const std::string &id) const;
+  
   /** \brief Get the representation of the world */
   const collision_detection::WorldConstPtr& getWorld() const
   {
@@ -556,7 +570,6 @@ public:
     explicit ConstructException(const std::string& what_arg);
   };
 
-
 private:
 
   /* Private constructor used by the diff() methods. */
@@ -651,8 +664,6 @@ private:
   
 
 };
-
-
 
 }
 

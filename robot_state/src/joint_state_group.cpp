@@ -37,11 +37,12 @@
 #include <moveit/robot_state/robot_state.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <boost/bind.hpp>
+#include <boost/math/constants/constants.hpp>
 #include <algorithm>
 #include <Eigen/SVD>
 
 robot_state::JointStateGroup::JointStateGroup(RobotState *state,
-                                                  const robot_model::JointModelGroup *jmg) :
+                                              const robot_model::JointModelGroup *jmg) :
   kinematic_state_(state), joint_model_group_(jmg)
 {
   const std::vector<const robot_model::JointModel*>& joint_model_vector = jmg->getJointModels();
@@ -105,8 +106,8 @@ bool robot_state::JointStateGroup::setVariableValues(const std::vector<double> &
 {
   if (joint_state_values.size() != getVariableCount())
   {
-    logError("Incorrect variable count specified for array of joint values. Expected %u but got %u values",
-             getVariableCount(), (int)joint_state_values.size());
+    logError("JointStateGroup: Incorrect variable count specified for array of joint values. Expected %u but got %u values in group '%s'",
+             getVariableCount(), (int)joint_state_values.size(), joint_model_group_->getName().c_str() );
     return false;
   }
   
@@ -301,7 +302,7 @@ robot_state::JointState* robot_state::JointStateGroup::getJointState(const std::
     return it->second;
 }
 
-bool robot_state::JointStateGroup::setFromIK(const geometry_msgs::Pose &pose, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint)
+bool robot_state::JointStateGroup::setFromIK(const geometry_msgs::Pose &pose, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint, bool lock_redundant_joints)
 {
   const kinematics::KinematicsBaseConstPtr& solver = joint_model_group_->getSolverInstance();
   if (!solver)
@@ -309,17 +310,17 @@ bool robot_state::JointStateGroup::setFromIK(const geometry_msgs::Pose &pose, un
     logError("No kinematics solver instantiated for this group");    
     return false;
   }  
-  return setFromIK(pose, solver->getTipFrame(), attempts, timeout, constraint);
+  return setFromIK(pose, solver->getTipFrame(), attempts, timeout, constraint, lock_redundant_joints);
 }
 
-bool robot_state::JointStateGroup::setFromIK(const geometry_msgs::Pose &pose, const std::string &tip, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint)
+bool robot_state::JointStateGroup::setFromIK(const geometry_msgs::Pose &pose, const std::string &tip, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint, bool lock_redundant_joints)
 {
   Eigen::Affine3d mat;
   tf::poseMsgToEigen(pose, mat);
-  return setFromIK(mat, tip,  attempts, timeout, constraint);
+  return setFromIK(mat, tip,  attempts, timeout, constraint, lock_redundant_joints);
 }
 
-bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint)
+bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint, bool lock_redundant_joints)
 { 
   const kinematics::KinematicsBaseConstPtr& solver = joint_model_group_->getSolverInstance();
   if (!solver)
@@ -328,16 +329,16 @@ bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose, unsign
     return false;
   }  
   static std::vector<double> consistency_limits;  
-  return setFromIK(pose, solver->getTipFrame(), consistency_limits, attempts, timeout, constraint);  
+  return setFromIK(pose, solver->getTipFrame(), consistency_limits, attempts, timeout, constraint, lock_redundant_joints);  
 }
 
-bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, const std::string &tip_in, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint)
+bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, const std::string &tip_in, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint, bool lock_redundant_joints)
 {
   static std::vector<double> consistency_limits;  
-  return setFromIK(pose_in, tip_in, consistency_limits, attempts, timeout, constraint);  
+  return setFromIK(pose_in, tip_in, consistency_limits, attempts, timeout, constraint, lock_redundant_joints);  
 }
 
-bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, const std::string &tip_in, const std::vector<double> &consistency_limits, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint)
+bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, const std::string &tip_in, const std::vector<double> &consistency_limits, unsigned int attempts, double timeout, const StateValidityCallbackFn &constraint, bool lock_redundant_joints)
 {
   const kinematics::KinematicsBaseConstPtr& solver = joint_model_group_->getSolverInstance();
   if (!solver)
@@ -359,7 +360,7 @@ bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, con
     pose = ls->getGlobalLinkTransform().inverse() * pose;
   }
 
-    // see if the tip frame can be transformed via fixed transforms to the frame known to the IK solver
+  // see if the tip frame can be transformed via fixed transforms to the frame known to the IK solver
   const std::string &tip_frame = solver->getTipFrame();
   if (tip != tip_frame)
   {
@@ -421,6 +422,8 @@ bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, con
     ik_callback_fn = boost::bind(&JointStateGroup::ikCallbackFnAdapter, this, constraint, _1, _2, _3);
   
   bool first_seed = true;
+  std::vector<double> initial_values;    
+  getVariableValues(initial_values);
   for (unsigned int st = 0 ; st < attempts ; ++st)
   {
     std::vector<double> seed(bij.size());
@@ -429,8 +432,6 @@ bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, con
     if (first_seed)
     {
       first_seed = false;
-      std::vector<double> initial_values;
-      getVariableValues(initial_values);
       for (std::size_t i = 0 ; i < bij.size() ; ++i)
         seed[bij[i]] = initial_values[i];
     }
@@ -442,14 +443,25 @@ bool robot_state::JointStateGroup::setFromIK(const Eigen::Affine3d &pose_in, con
       joint_model_group_->getVariableRandomValues(rng, random_values);
       for (std::size_t i = 0 ; i < bij.size() ; ++i)
         seed[bij[i]] = random_values[i];
+      
+      if (lock_redundant_joints)
+      {
+        std::vector<unsigned int> red_joints;
+        solver->getRedundantJoints(red_joints);
+        if (!red_joints.empty())
+        {
+          for(std::size_t i = 0 ; i < red_joints.size(); ++i)
+            seed[bij[red_joints[i]]] = initial_values[red_joints[i]];
+        }      
+      }      
     }
     
     // compute the IK solution
     std::vector<double> ik_sol;
     moveit_msgs::MoveItErrorCodes error;
     if (ik_callback_fn ?
-        solver->searchPositionIK(ik_query, seed, timeout, consistency_limits, ik_sol, ik_callback_fn, error) : 
-        solver->searchPositionIK(ik_query, seed, timeout, consistency_limits, ik_sol, error))
+        solver->searchPositionIK(ik_query, seed, timeout, consistency_limits, ik_sol, ik_callback_fn, error, lock_redundant_joints) : 
+        solver->searchPositionIK(ik_query, seed, timeout, consistency_limits, ik_sol, error, lock_redundant_joints))
     {
       std::vector<double> solution(bij.size());
       for (std::size_t i = 0 ; i < bij.size() ; ++i)
@@ -465,10 +477,11 @@ bool robot_state::JointStateGroup::setFromIK(const EigenSTL::vector_Affine3d &po
                                              const std::vector<std::string> &tips_in, 
                                              unsigned int attempts, 
                                              double timeout, 
-                                             const StateValidityCallbackFn &constraint)
+                                             const StateValidityCallbackFn &constraint,
+                                             bool lock_redundant_joints)
 {
   static const std::vector<std::vector<double> > consistency_limits;
-  return setFromIK(poses_in, tips_in, consistency_limits, attempts, timeout, constraint);  
+  return setFromIK(poses_in, tips_in, consistency_limits, attempts, timeout, constraint, lock_redundant_joints);  
 }
 
 bool robot_state::JointStateGroup::setFromIK(const EigenSTL::vector_Affine3d &poses_in, 
@@ -476,14 +489,15 @@ bool robot_state::JointStateGroup::setFromIK(const EigenSTL::vector_Affine3d &po
                                              const std::vector<std::vector<double> > &consistency_limits,
                                              unsigned int attempts, 
                                              double timeout, 
-                                             const StateValidityCallbackFn &constraint)
+                                             const StateValidityCallbackFn &constraint,
+                                             bool lock_redundant_joints)
 {
   if (poses_in.size() == 1 && tips_in.size() == 1 && consistency_limits.size() <= 1)
   {
     if (consistency_limits.empty())
-      return setFromIK(poses_in[0], tips_in[0], attempts, timeout, constraint);
+      return setFromIK(poses_in[0], tips_in[0], attempts, timeout, constraint, lock_redundant_joints);
     else
-      return setFromIK(poses_in[0], tips_in[0], consistency_limits[0], attempts, timeout, constraint);    
+      return setFromIK(poses_in[0], tips_in[0], consistency_limits[0], attempts, timeout, constraint, lock_redundant_joints);    
   }
   
   const std::vector<std::string>& sub_group_names = joint_model_group_->getSubgroupNames();
@@ -805,7 +819,7 @@ bool robot_state::JointStateGroup::avoidJointLimitsSecondaryTask(const robot_sta
 }
 
 double robot_state::JointStateGroup::computeCartesianPath(std::vector<RobotStatePtr> &traj, const std::string &link_name, const Eigen::Vector3d &direction, bool global_reference_frame,
-                                                          double distance, double max_step, double jump_threshold, const StateValidityCallbackFn &validCallback)
+                                                          double distance, double max_step, double jump_threshold, const StateValidityCallbackFn &validCallback, bool lock_redundant_joints)
 {
   const LinkState *link_state = kinematic_state_->getLinkState(link_name);
   if (!link_state)
@@ -822,11 +836,11 @@ double robot_state::JointStateGroup::computeCartesianPath(std::vector<RobotState
   target_pose.translation() += rotated_direction * distance;
   
   //call computeCartesianPath for the computed target pose in the global reference frame
-  return (distance * computeCartesianPath(traj, link_name, target_pose, true, max_step, jump_threshold, validCallback));
+  return (distance * computeCartesianPath(traj, link_name, target_pose, true, max_step, jump_threshold, validCallback, lock_redundant_joints));
 }
 
 double robot_state::JointStateGroup::computeCartesianPath(std::vector<RobotStatePtr> &traj, const std::string &link_name, const Eigen::Affine3d &target, bool global_reference_frame,
-                                                          double max_step, double jump_threshold, const StateValidityCallbackFn &validCallback)
+                                                          double max_step, double jump_threshold, const StateValidityCallbackFn &validCallback, bool lock_redundant_joints)
 {
   const LinkState *link_state = kinematic_state_->getLinkState(link_name);
   if (!link_state)
@@ -882,7 +896,7 @@ double robot_state::JointStateGroup::computeCartesianPath(std::vector<RobotState
     Eigen::Affine3d pose(start_quaternion.slerp(percentage, target_quaternion));
     pose.translation() = percentage * rotated_target.translation() + (1 - percentage) * start_pose.translation();
 
-    if (setFromIK(pose, link_name, 1, 0.0, validCallback))
+    if (setFromIK(pose, link_name, 1, 0.0, validCallback, lock_redundant_joints))
     {
       traj.push_back(RobotStatePtr(new RobotState(*kinematic_state_)));
 
@@ -924,7 +938,7 @@ double robot_state::JointStateGroup::computeCartesianPath(std::vector<RobotState
 }
 
 double robot_state::JointStateGroup::computeCartesianPath(std::vector<RobotStatePtr> &traj, const std::string &link_name, const EigenSTL::vector_Affine3d &waypoints,
-                                                          bool global_reference_frame, double max_step, double jump_threshold, const StateValidityCallbackFn &validCallback)
+                                                          bool global_reference_frame, double max_step, double jump_threshold, const StateValidityCallbackFn &validCallback, bool lock_redundant_joints)
 {
   double percentage_solved = 0.0;
   for (std::size_t i = 0; i < waypoints.size(); ++i)
@@ -1008,32 +1022,36 @@ bool robot_state::JointStateGroup::getJacobian(const std::string &link_name,
     
     if (joint_model_group_->isActiveDOF(link_state->getParentJointState()->getJointModel()->getName()))
     {
+        unsigned int joint_index = joint_model_group_->getJointVariablesIndexMap().find(link_state->getParentJointState()->getJointModel()->getName())->second;
+        double multiplier = 1.0; // to account for mimic joints        
+        if (link_state->getParentJointState()->getJointModel()->getMimic())
+        {
+          joint_index = joint_model_group_->getJointVariablesIndexMap().find(link_state->getParentJointState()->getJointModel()->getMimic()->getName())->second;
+          multiplier = link_state->getParentJointState()->getJointModel()->getMimicFactor();          
+        }        
       if (link_state->getParentJointState()->getJointModel()->getType() == robot_model::JointModel::REVOLUTE)
       {
-        unsigned int joint_index = joint_model_group_->getJointVariablesIndexMap().find(link_state->getParentJointState()->getJointModel()->getName())->second;
         joint_transform = reference_transform*link_state->getGlobalLinkTransform();
         joint_axis = joint_transform.rotation()*(static_cast<const robot_model::RevoluteJointModel*>(link_state->getParentJointState()->getJointModel()))->getAxis();
-        jacobian.block<3,1>(0,joint_index) = joint_axis.cross(point_transform - joint_transform.translation());
-        jacobian.block<3,1>(3,joint_index) = joint_axis;
+        jacobian.block<3,1>(0,joint_index) = jacobian.block<3,1>(0,joint_index) + multiplier * joint_axis.cross(point_transform - joint_transform.translation());
+        jacobian.block<3,1>(3,joint_index) = jacobian.block<3,1>(3,joint_index) + multiplier * joint_axis;
       }
       if (link_state->getParentJointState()->getJointModel()->getType() == robot_model::JointModel::PRISMATIC)
       {
-        unsigned int joint_index = joint_model_group_->getJointVariablesIndexMap().find(link_state->getParentJointState()->getJointModel()->getName())->second;
         joint_transform = reference_transform*link_state->getGlobalLinkTransform();
         joint_axis = joint_transform*(static_cast<const robot_model::PrismaticJointModel*>(link_state->getParentJointState()->getJointModel()))->getAxis();
-        jacobian.block<3,1>(0,joint_index) = joint_axis;
+        jacobian.block<3,1>(0,joint_index) = jacobian.block<3,1>(0,joint_index) + multiplier * joint_axis;
       }
       if (link_state->getParentJointState()->getJointModel()->getType() == robot_model::JointModel::PLANAR)
       {
-        unsigned int joint_index = joint_model_group_->getJointVariablesIndexMap().find(link_state->getParentJointState()->getJointModel()->getName())->second;
         joint_transform = reference_transform*link_state->getGlobalLinkTransform();
         joint_axis = joint_transform*Eigen::Vector3d(1.0,0.0,0.0);
-        jacobian.block<3,1>(0,joint_index) = joint_axis;
+        jacobian.block<3,1>(0,joint_index) = jacobian.block<3,1>(0,joint_index) + multiplier * joint_axis;
         joint_axis = joint_transform*Eigen::Vector3d(0.0,1.0,0.0);
-        jacobian.block<3,1>(0,joint_index+1) = joint_axis;
+        jacobian.block<3,1>(0,joint_index+1) = jacobian.block<3,1>(0,joint_index+1) + multiplier * joint_axis;
         joint_axis = joint_transform*Eigen::Vector3d(0.0,0.0,1.0);
-        jacobian.block<3,1>(0,joint_index+2) = joint_axis.cross(point_transform - joint_transform.translation());
-        jacobian.block<3,1>(3,joint_index+2) = joint_axis;
+        jacobian.block<3,1>(0,joint_index+2) = jacobian.block<3,1>(0,joint_index+2) + multiplier * joint_axis.cross(point_transform - joint_transform.translation());
+        jacobian.block<3,1>(3,joint_index+2) = jacobian.block<3,1>(3,joint_index+2) + multiplier * joint_axis;
       }
     }
     if (link_state->getParentJointState()->getJointModel() == root_joint_model)
@@ -1058,4 +1076,53 @@ bool robot_state::JointStateGroup::getJacobian(const std::string &link_name,
   return true;
 }
 
+std::pair<double,int> robot_state::JointStateGroup::getMinDistanceToBounds() const
+{  
+  double distance = std::numeric_limits<double>::max();  
+  int index = -1;  
+  for(std::size_t i=0; i < joint_state_vector_.size(); ++i)
+  {   
+    if(joint_state_vector_[i]->getType() == robot_model::JointModel::REVOLUTE)
+    {
+      const robot_model::RevoluteJointModel* revolute_model = dynamic_cast<const robot_model::RevoluteJointModel*> (joint_state_vector_[i]->getJointModel());
+      if(revolute_model->isContinuous())
+        continue;      
+    }    
+    if(joint_state_vector_[i]->getType() == robot_model::JointModel::PLANAR)
+    {
+      const std::vector<std::pair<double, double> >& planar_bounds = joint_state_vector_[i]->getVariableBounds();
+      if(planar_bounds[0].first == -std::numeric_limits<double>::max() || planar_bounds[0].second == std::numeric_limits<double>::max() ||
+         planar_bounds[1].first == -std::numeric_limits<double>::max() || planar_bounds[1].second == std::numeric_limits<double>::max() ||
+         planar_bounds[2].first == -boost::math::constants::pi<double>() || planar_bounds[2].second == boost::math::constants::pi<double>())
+        continue;
+    }
+    if(joint_state_vector_[i]->getType() == robot_model::JointModel::FLOATING)
+    {
+      //Joint limits are not well-defined for floating joints
+      continue;      
+    }    
+
+    const std::vector<double>& joint_values = joint_state_vector_[i]->getVariableValues();
+    const std::vector<std::pair<double, double> >& bounds = joint_state_vector_[i]->getVariableBounds();
+    std::vector<double> lower_bounds, upper_bounds;
+    for(std::size_t j=0; j < bounds.size(); ++j)
+    {
+      lower_bounds.push_back(bounds[j].first);
+      upper_bounds.push_back(bounds[j].second);
+    }
+    double new_distance = joint_state_vector_[i]->getJointModel()->distance(joint_values, lower_bounds);      
+    if(new_distance < distance)
+    {
+      index = i;      
+      distance = new_distance;    
+    }    
+    new_distance = joint_state_vector_[i]->getJointModel()->distance(joint_values, upper_bounds);      
+    if(new_distance < distance)
+    {
+      index = i;      
+      distance = new_distance;    
+    }    
+  }
+  return std::pair<double,int>(distance,index);  
+}
 

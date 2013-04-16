@@ -41,6 +41,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
 #include <boost/function.hpp>
+#include <string>
 
 /** @brief API for forward and inverse kinematics */
 namespace kinematics
@@ -68,7 +69,8 @@ public:
   virtual bool getPositionIK(const geometry_msgs::Pose &ik_pose,
                              const std::vector<double> &ik_seed_state,
                              std::vector<double> &solution,
-                             moveit_msgs::MoveItErrorCodes &error_code) const = 0;      
+                             moveit_msgs::MoveItErrorCodes &error_code,
+                             bool lock_redundant_joints = false) const = 0;      
 
   /**
    * @brief Given a desired pose of the end-effector, search for the joint angles required to reach it.
@@ -85,7 +87,8 @@ public:
                                 const std::vector<double> &ik_seed_state,
                                 double timeout,
                                 std::vector<double> &solution,
-                                moveit_msgs::MoveItErrorCodes &error_code) const = 0;      
+                                moveit_msgs::MoveItErrorCodes &error_code,
+                                bool lock_redundant_joints = false) const = 0;      
 
   /**
    * @brief Given a desired pose of the end-effector, search for the joint angles required to reach it.
@@ -104,7 +107,8 @@ public:
                                 double timeout,
                                 const std::vector<double> &consistency_limits,
                                 std::vector<double> &solution,
-                                moveit_msgs::MoveItErrorCodes &error_code) const = 0;      
+                                moveit_msgs::MoveItErrorCodes &error_code,
+                                bool lock_redundant_joints = false) const = 0;      
 
   /**
    * @brief Given a desired pose of the end-effector, search for the joint angles required to reach it.
@@ -124,7 +128,8 @@ public:
                                 double timeout,
                                 std::vector<double> &solution,
                                 const IKCallbackFn &solution_callback,
-                                moveit_msgs::MoveItErrorCodes &error_code) const = 0;      
+                                moveit_msgs::MoveItErrorCodes &error_code,
+                                bool lock_redundant_joints = false) const = 0;      
 
   /**
    * @brief Given a desired pose of the end-effector, search for the joint angles required to reach it.
@@ -146,7 +151,8 @@ public:
                                 const std::vector<double> &consistency_limits,
                                 std::vector<double> &solution,
                                 const IKCallbackFn &solution_callback,
-                                moveit_msgs::MoveItErrorCodes &error_code) const = 0;      
+                                moveit_msgs::MoveItErrorCodes &error_code,
+                                bool lock_redundant_joints = false) const = 0;      
     
   /**
    * @brief Given a set of joint angles and a set of links, compute their pose
@@ -176,8 +182,8 @@ public:
   {
     robot_description_ = robot_description;
     group_name_ = group_name;
-    base_frame_ = base_frame;
-    tip_frame_ = tip_frame;
+    base_frame_ = removeSlash(base_frame);
+    tip_frame_ = removeSlash(tip_frame);
     search_discretization_ = search_discretization;
   }
 
@@ -207,7 +213,7 @@ public:
   }
     
   /**
-   * @brief  Return the name of the frame in which the solver is operating
+   * @brief  Return the name of the frame in which the solver is operating. This is usually a link name. No namespacing (e.g., no "/" prefix) should be used.
    * @return The string name of the frame in which the solver is operating
    */
   virtual const std::string& getBaseFrame() const
@@ -216,7 +222,7 @@ public:
   }
 
   /**
-   * @brief  Return the name of the tip frame of the chain on which the solver is operating
+   * @brief  Return the name of the tip frame of the chain on which the solver is operating. This is usually a link name. No namespacing (e.g., no "/" prefix) should be used.
    * @return The string name of the tip frame of the chain on which the solver is operating
    */
   virtual const std::string& getTipFrame() const
@@ -291,6 +297,13 @@ protected:
   double search_discretization_;
   std::vector<unsigned int> redundant_joint_indices_;
   KinematicsBase() {}
+
+private:
+  
+  std::string removeSlash(const std::string &str) const
+  {
+    return (!str.empty() && str[0] == '/') ? removeSlash(str.substr(1)) : str;
+  }  
 };
 
 typedef boost::shared_ptr<KinematicsBase> KinematicsBasePtr;

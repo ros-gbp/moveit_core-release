@@ -37,6 +37,7 @@
 #include <moveit/robot_model/robot_model.h>
 #include <geometric_shapes/shape_operations.h>
 #include <boost/math/constants/constants.hpp>
+#include <moveit/profiler/profiler.h>
 #include <algorithm>
 #include <limits>
 #include <queue>
@@ -155,6 +156,9 @@ void robot_model::RobotModel::buildModel(const boost::shared_ptr<const urdf::Mod
                                          const boost::shared_ptr<const srdf::Model> &srdf_model,
                                          const std::string &root_link)
 {
+  moveit::Profiler::ScopedStart prof_start;
+  moveit::Profiler::ScopedBlock prof_block("RobotModel::buildModel");
+
   root_joint_ = NULL;
   model_name_ = urdf_model->getName();
   if (urdf_model->getRoot())
@@ -926,7 +930,9 @@ robot_model::LinkModel* robot_model::RobotModel::constructLinkModel(const urdf::
 }
 
 shapes::ShapePtr robot_model::RobotModel::constructShape(const urdf::Geometry *geom)
-{
+{ 
+  moveit::Profiler::ScopedBlock prof_block("RobotModel::constructShape");
+
   shapes::Shape *result = NULL;
   switch (geom->type)
   {
@@ -949,7 +955,8 @@ shapes::ShapePtr robot_model::RobotModel::constructShape(const urdf::Geometry *g
       if (!mesh->filename.empty())
       {
         Eigen::Vector3d scale(mesh->scale.x, mesh->scale.y, mesh->scale.z);
-        result = shapes::createMeshFromResource(mesh->filename, scale);
+        shapes::Mesh *m = shapes::createMeshFromResource(mesh->filename, scale);
+        result = m;
       }
     }
     break;
@@ -957,7 +964,7 @@ shapes::ShapePtr robot_model::RobotModel::constructShape(const urdf::Geometry *g
     logError("Unknown geometry type: %d", (int)geom->type);
     break;
   }
-
+  
   return shapes::ShapePtr(result);
 }
 
@@ -1155,7 +1162,7 @@ void robot_model::RobotModel::setKinematicsAllocators(const std::map<std::string
       // go through the groups that we know have IK allocators and see if they are included in the group that does not; if so, put that group in sub
       for (std::map<std::string, SolverAllocatorFn>::const_iterator kt = allocators.begin() ; kt != allocators.end() ; ++kt)
       {
-        const JointModelGroup *sub = jmg->getParentModel()->getJointModelGroup(kt->first);
+        const JointModelGroup *sub = getJointModelGroup(kt->first);
         if (!sub)
         {
           subs.clear();
@@ -1170,7 +1177,7 @@ void robot_model::RobotModel::setKinematicsAllocators(const std::map<std::string
           std::set_difference(joints.begin(), joints.end(), sub_joints.begin(), sub_joints.end(),
                               std::inserter(resultj, resultj.end()));
           subs.push_back(sub);
-          joints = resultj;
+          joints.swap(resultj);
         }
       }
 

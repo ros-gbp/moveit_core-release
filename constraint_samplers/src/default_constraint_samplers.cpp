@@ -520,7 +520,7 @@ bool constraint_samplers::IKConstraintSampler::sampleHelper(robot_state::JointSt
     ik_query.orientation.z = quat.z();
     ik_query.orientation.w = quat.w();        
     
-    if (callIK(ik_query, adapted_ik_validity_callback, ik_timeout_, jsg, project))
+    if (callIK(ik_query, adapted_ik_validity_callback, ik_timeout_, jsg, project && a == 0))
       return true; 
   }
   return false;
@@ -563,12 +563,14 @@ bool constraint_samplers::IKConstraintSampler::callIK(const geometry_msgs::Pose 
       solution[i] = ik_sol[ik_joint_bijection[i]];
     jsg->setVariableValues(solution);
 
-    //    assert(!sampling_pose_.orientation_constraint_ || sampling_pose_.orientation_constraint_->decide(*jsg->getRobotState(), false).satisfied);
-    //    assert(!sampling_pose_.position_constraint_ || sampling_pose_.position_constraint_->decide(*jsg->getRobotState(), false).satisfied);
+    assert(!sampling_pose_.orientation_constraint_ || sampling_pose_.orientation_constraint_->decide(*jsg->getRobotState(), false).satisfied);
+    assert(!sampling_pose_.position_constraint_ || sampling_pose_.position_constraint_->decide(*jsg->getRobotState(), false).satisfied);
+    
     return true;
   }
   else
     if (error.val != moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION && 
+	error.val != moveit_msgs::MoveItErrorCodes::INVALID_ROBOT_STATE && 
         error.val != moveit_msgs::MoveItErrorCodes::TIMED_OUT)
       logError("IK solver failed with error %d", error.val);
   return false;

@@ -32,13 +32,11 @@ find_package(octomap REQUIRED)
 set(THIS_PACKAGE_INCLUDE_DIRS
     collision_detection/include
     collision_detection_fcl/include
-    collision_distance_field/include
     constraint_samplers/include
     controller_manager/include
     distance_field/include
     dynamics_solver/include
     kinematics_base/include
-    kinematics_cache/include
     kinematics_metrics/include
     robot_model/include
     robot_state/include
@@ -51,7 +49,6 @@ set(THIS_PACKAGE_INCLUDE_DIRS
     profiler/include
     sensor_manager/include
     trajectory_processing/include
-    kinematics_constraint_aware/include
 )
 
 catkin_package(
@@ -59,6 +56,7 @@ catkin_package(
     ${THIS_PACKAGE_INCLUDE_DIRS}
     ${OCTOMAP_INCLUDE_DIRS}
   LIBRARIES
+    moveit_kinematics_base
     moveit_robot_model
     moveit_robot_state
     moveit_robot_trajectory
@@ -72,11 +70,8 @@ catkin_package(
     moveit_profiler
     moveit_trajectory_processing
     moveit_distance_field
-    moveit_collision_distance_field
     moveit_kinematics_metrics
     moveit_dynamics_solver
-    moveit_kinematics_cache
-    moveit_kinematics_constraint_aware
     ${OCTOMAP_LIBRARIES}
   CATKIN_DEPENDS
     geometric_shapes
@@ -124,8 +119,5 @@ add_subdirectory(planning_interface)
 add_subdirectory(planning_request_adapter)
 add_subdirectory(trajectory_processing)
 add_subdirectory(distance_field)
-add_subdirectory(collision_distance_field)
 add_subdirectory(kinematics_metrics)
 add_subdirectory(dynamics_solver)
-add_subdirectory(kinematics_cache)
-add_subdirectory(kinematics_constraint_aware)

@@ -54,7 +54,10 @@ namespace kinematics
 class KinematicsBase
 {
 public:
-      
+
+  static const double DEFAULT_SEARCH_DISCRETIZATION; /* = 0.1 */
+  static const double DEFAULT_TIMEOUT; /* = 1.0 */
+  
   /** @brief The signature for a callback that can compute IK */
   typedef boost::function<void(const geometry_msgs::Pose &ik_pose, const std::vector<double> &ik_solution, moveit_msgs::MoveItErrorCodes &error_code)> IKCallbackFn;
       
@@ -64,6 +67,7 @@ public:
    * @param ik_seed_state an initial guess solution for the inverse kinematics
    * @param solution the solution vector
    * @param error_code an error code that encodes the reason for failure or success
+   * @param lock_redundant_joints if setRedundantJoints() was previously called, keep the values of the joints marked as redundant the same as in the seed 
    * @return True if a valid solution was found, false otherwise
    */
   virtual bool getPositionIK(const geometry_msgs::Pose &ik_pose,
@@ -81,6 +85,7 @@ public:
    * @param timeout The amount of time (in seconds) available to the solver
    * @param solution the solution vector
    * @param error_code an error code that encodes the reason for failure or success
+   * @param lock_redundant_joints if setRedundantJoints() was previously called, keep the values of the joints marked as redundant the same as in the seed 
    * @return True if a valid solution was found, false otherwise
    */
   virtual bool searchPositionIK(const geometry_msgs::Pose &ik_pose,
@@ -100,6 +105,7 @@ public:
    * @param consistency_limits the distance that any joint in the solution can be from the corresponding joints in the current seed state
    * @param solution the solution vector
    * @param error_code an error code that encodes the reason for failure or success
+   * @param lock_redundant_joints if setRedundantJoints() was previously called, keep the values of the joints marked as redundant the same as in the seed 
    * @return True if a valid solution was found, false otherwise
    */
   virtual bool searchPositionIK(const geometry_msgs::Pose &ik_pose,
@@ -121,6 +127,7 @@ public:
    * @param desired_pose_callback A callback function for the desired link pose - could be used, e.g. to check for collisions for the end-effector
    * @param solution_callback A callback solution for the IK solution
    * @param error_code an error code that encodes the reason for failure or success
+   * @param lock_redundant_joints if setRedundantJoints() was previously called, keep the values of the joints marked as redundant the same as in the seed 
    * @return True if a valid solution was found, false otherwise
    */
   virtual bool searchPositionIK(const geometry_msgs::Pose &ik_pose,
@@ -143,6 +150,7 @@ public:
    * @param desired_pose_callback A callback function for the desired link pose - could be used, e.g. to check for collisions for the end-effector
    * @param solution_callback A callback solution for the IK solution
    * @param error_code an error code that encodes the reason for failure or success
+   * @param lock_redundant_joints if setRedundantJoints() was previously called, keep the values of the joints marked as redundant the same as in the seed 
    * @return True if a valid solution was found, false otherwise
    */
   virtual bool searchPositionIK(const geometry_msgs::Pose &ik_pose,
@@ -178,14 +186,7 @@ public:
                          const std::string& group_name,
                          const std::string& base_frame,
                          const std::string& tip_frame,
-                         double search_discretization)
-  {
-    robot_description_ = robot_description;
-    group_name_ = group_name;
-    base_frame_ = removeSlash(base_frame);
-    tip_frame_ = removeSlash(tip_frame);
-    search_discretization_ = search_discretization;
-  }
+                         double search_discretization);
 
   /**
    * @brief  Initialization function for the kinematics
@@ -228,28 +229,26 @@ public:
   virtual const std::string& getTipFrame() const
   {
     return tip_frame_;
-  }
+  } 
 
   /**
-   * @brief Set a set of redundant joints for the kinematics solver to use. 
+   * @brief Set a set of redundant joints for the kinematics solver to use.  This can fail, depending on the IK solver and choice of redundant joints!
    * @param redundant_joint_indices The set of redundant joint indices (corresponding to 
    * the list of joints you get from getJointNames()). 
    * @return False if any of the input joint indices are invalid (exceed number of 
    * joints)
    */
-  virtual bool setRedundantJoints(const std::vector<unsigned int> &redundant_joint_indices)
-  {
-    for(std::size_t i=0; i < redundant_joint_indices.size(); ++i)
-    {
-      if(redundant_joint_indices[i] >= getJointNames().size())
-      {
-        return false;
-      }      
-    }    
-    redundant_joint_indices_ = redundant_joint_indices;
-    return true;    
-  }
-      
+  virtual bool setRedundantJoints(const std::vector<unsigned int> &redundant_joint_indices);
+
+  /**
+   * @brief Set a set of redundant joints for the kinematics solver to use. 
+   * This function is just a convenience function that calls the previous definition of setRedundantJoints()
+   * @param redundant_joint_names The set of redundant joint names. 
+   * @return False if any of the input joint indices are invalid (exceed number of 
+   * joints)
+   */
+  bool setRedundantJoints(const std::vector<std::string> &redundant_joint_names);
+  
   /**
    * @brief Get the set of redundant joints
    */
@@ -284,26 +283,42 @@ public:
     return search_discretization_;
   }
 
+  /** @brief For functions that require a timeout specified but one is not specified using arguments, 
+      a default timeout is used, as set by this function (and initialized to KinematicsBase::DEFAULT_TIMEOUT) */
+  void setDefaultTimeout(double timeout)
+  {
+    default_timeout_ = timeout;
+  }
+
+  /** @brief For functions that require a timeout specified but one is not specified using arguments, this default timeout is used */
+  double getDefaultTimeout() const
+  {
+    return default_timeout_;
+  }
+
   /**
    * @brief  Virtual destructor for the interface
    */
   virtual ~KinematicsBase() {}
 
+  KinematicsBase() : 
+    search_discretization_(DEFAULT_SEARCH_DISCRETIZATION),
+    default_timeout_(DEFAULT_TIMEOUT)
+  {}
+
 protected:
+
   std::string robot_description_;
   std::string group_name_;
   std::string base_frame_;
   std::string tip_frame_;
   double search_discretization_;
+  double default_timeout_;
   std::vector<unsigned int> redundant_joint_indices_;
-  KinematicsBase() {}
 
 private:
   
-  std::string removeSlash(const std::string &str) const
-  {
-    return (!str.empty() && str[0] == '/') ? removeSlash(str.substr(1)) : str;
-  }  
+  std::string removeSlash(const std::string &str) const;
 };
 
 typedef boost::shared_ptr<KinematicsBase> KinematicsBasePtr;

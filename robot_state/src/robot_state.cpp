@@ -128,7 +128,8 @@ void robot_state::RobotState::copyFrom(const RobotState &ks)
   // copy attached bodies
   clearAttachedBodies(); 
   for (std::map<std::string, AttachedBody*>::const_iterator it = ks.attached_body_map_.begin() ; it != ks.attached_body_map_.end() ; ++it)
-    attachBody(it->second->id_, it->second->shapes_, it->second->attach_trans_, it->second->touch_links_, it->second->getAttachedLinkName());
+    attachBody(it->second->getName(), it->second->getShapes(), it->second->getFixedTransforms(),
+               it->second->getTouchLinks(), it->second->getAttachedLinkName(), it->second->getDetachPosture());
 
   std::map<std::string, double> current_joint_values;
   ks.getStateValues(current_joint_values);
@@ -441,12 +442,13 @@ void robot_state::RobotState::attachBody(const std::string &id,
                                          const std::vector<shapes::ShapeConstPtr> &shapes,
                                          const EigenSTL::vector_Affine3d &attach_trans,
                                          const std::set<std::string> &touch_links,
-                                         const std::string &link)
+                                         const std::string &link,
+                                         const sensor_msgs::JointState &detach_posture)
 {
   LinkState *ls = getLinkState(link);
   if (ls)
   {
-    AttachedBody *ab = new AttachedBody(ls->getLinkModel(), id, shapes, attach_trans, touch_links);
+    AttachedBody *ab = new AttachedBody(ls->getLinkModel(), id, shapes, attach_trans, touch_links, detach_posture);
     ls->attached_body_map_[id] = ab;
     attached_body_map_[id] = ab;
     ab->computeTransform(ls->getGlobalLinkTransform());
@@ -459,10 +461,11 @@ void robot_state::RobotState::attachBody(const std::string &id,
                                          const std::vector<shapes::ShapeConstPtr> &shapes,
                                          const EigenSTL::vector_Affine3d &attach_trans,
                                          const std::vector<std::string> &touch_links,
-                                         const std::string &link)
+                                         const std::string &link,
+                                         const sensor_msgs::JointState &detach_posture)
 {
   std::set<std::string> touch_links_set(touch_links.begin(), touch_links.end());
-  attachBody(id, shapes, attach_trans, touch_links_set, link);
+  attachBody(id, shapes, attach_trans, touch_links_set, link, detach_posture);
 }
 
 void robot_state::RobotState::getAttachedBodies(std::vector<const AttachedBody*> &attached_bodies) const
@@ -604,6 +607,8 @@ const Eigen::Affine3d& robot_state::RobotState::getFrameTransform(const std::str
   if (!id.empty() && id[0] == '/')
     return getFrameTransform(id.substr(1));
   static const Eigen::Affine3d identity_transform = Eigen::Affine3d::Identity();
+  if (id == kinematic_model_->getModelFrame())
+    return identity_transform;
   std::map<std::string, LinkState*>::const_iterator it = link_state_map_.find(id);
   if (it != link_state_map_.end())
     return it->second->getGlobalLinkTransform();

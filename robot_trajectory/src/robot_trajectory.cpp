@@ -32,7 +32,7 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-/* Author: Ioan Sucan */
+/* Author: Ioan Sucan, Adam Leeper */
 
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <moveit/robot_state/conversions.h>
@@ -236,6 +236,8 @@ void robot_trajectory::RobotTrajectory::getRobotTrajectoryMsg(moveit_msgs::Robot
         // if we have velocities, copy those too
         if (!js->getVelocities().empty())
           trajectory.joint_trajectory.points[i].velocities.push_back(js->getVelocities()[0]);
+        if (!js->getAccelerations().empty())
+          trajectory.joint_trajectory.points[i].accelerations.push_back(js->getAccelerations()[0]);
       }
       // clear velocities if we have an incomplete specification
       if (trajectory.joint_trajectory.points[i].velocities.size() != onedof.size())

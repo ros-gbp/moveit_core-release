@@ -15,7 +15,6 @@ COMPONENTS
   urdfdom_headers
   srdfdom
   fcl
-  orocos_kdl
   kdl_parser
   geometric_shapes
   shape_tools
@@ -35,6 +34,7 @@ file(MAKE_DIRECTORY "${VERSION_FILE_PATH}")
 
 set(THIS_PACKAGE_INCLUDE_DIRS 
     ${VERSION_FILE_PATH}
+    exceptions/include
     collision_detection/include
     collision_detection_fcl/include
     constraint_samplers/include
@@ -62,6 +62,7 @@ catkin_package(
     ${THIS_PACKAGE_INCLUDE_DIRS}
     ${OCTOMAP_INCLUDE_DIRS}
   LIBRARIES
+    moveit_exceptions
     moveit_kinematics_base
     moveit_robot_model
     moveit_transforms
@@ -86,7 +87,6 @@ catkin_package(
     eigen_stl_containers
     eigen_conversions
     random_numbers
-    console_bridge
     moveit_msgs
     kdl_parser
     srdfdom
@@ -95,6 +95,7 @@ catkin_package(
     Eigen
     urdfdom
     urdfdom_headers
+    console_bridge
     )
 
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS}
@@ -130,6 +131,7 @@ endif()
 
 add_subdirectory(version)
 add_subdirectory(macros)
+add_subdirectory(exceptions)
 add_subdirectory(profiler)
 add_subdirectory(kinematics_base)
 add_subdirectory(controller_manager)

@@ -40,6 +40,7 @@
 #include <moveit/collision_detection/collision_tools.h>
 #include <moveit/trajectory_processing/trajectory_tools.h>
 #include <moveit/robot_state/conversions.h>
+#include <moveit/exceptions/exceptions.h>
 #include <octomap_msgs/conversions.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <set>
@@ -125,20 +126,19 @@ planning_scene::PlanningScene::PlanningScene(const robot_model::RobotModelPtr &r
 
 planning_scene::PlanningScene::PlanningScene(const boost::shared_ptr<const urdf::ModelInterface> &urdf_model,
                                              const boost::shared_ptr<const srdf::Model> &srdf_model,
-                                             const std::string &root_link,
                                              collision_detection::WorldPtr world) :
   world_(world),
   world_const_(world)
 {
   if (!urdf_model)
-    throw ConstructException("The URDF model cannot be NULL");
+    throw moveit::ConstructException("The URDF model cannot be NULL");
 
   if (!srdf_model)
-    throw ConstructException("The SRDF model cannot be NULL");
+    throw moveit::ConstructException("The SRDF model cannot be NULL");
 
-  kmodel_ = createRobotModel(urdf_model, srdf_model, root_link);
+  kmodel_ = createRobotModel(urdf_model, srdf_model);
   if (!kmodel_)
-    throw ConstructException("Could not create RobotModel");
+    throw moveit::ConstructException("Could not create RobotModel");
 
   initialize();
 }
@@ -173,60 +173,20 @@ void planning_scene::PlanningScene::initialize()
 
 /* return NULL on failure */
 robot_model::RobotModelPtr planning_scene::PlanningScene::createRobotModel(const boost::shared_ptr<const urdf::ModelInterface> &urdf_model,
-                                                                           const boost::shared_ptr<const srdf::Model> &srdf_model,
-                                                                           const std::string &root_link)
+                                                                           const boost::shared_ptr<const srdf::Model> &srdf_model)
 {
-  robot_model::RobotModelPtr robot_model;
-  const urdf::Link *root_link_ptr = NULL;
-  if (!root_link.empty())
-  {
-    root_link_ptr = urdf_model->getLink(root_link).get();
-    if (!root_link_ptr)
-      logError("Link '%s' (to be used as root) was not found in model '%s'. "
-               "Attempting to construct model with default root link instead.",
-               root_link.c_str(), urdf_model->getName().c_str());
-  }
-  if (root_link_ptr)
-    robot_model.reset(new robot_model::RobotModel(urdf_model, srdf_model, root_link));
-  else
-    robot_model.reset(new robot_model::RobotModel(urdf_model, srdf_model));
-
+  robot_model::RobotModelPtr robot_model(new robot_model::RobotModel(urdf_model, srdf_model));
   if (!robot_model || !robot_model->getRoot())
     return robot_model::RobotModelPtr();
-
+  
   return robot_model;
-}
-
-void planning_scene::PlanningScene::setRootLink(const std::string& root_link)
-{
-  robot_model::RobotModelPtr new_robot_model;
-  new_robot_model = createRobotModel(getRobotModel()->getURDF(), getRobotModel()->getSRDF(), root_link);
-
-  if (!new_robot_model || new_robot_model->getRootLinkName() != root_link)
-  {
-    logError("Unable to set root_link to '%s'", root_link.c_str());
-    return;
-  }
-
-  kmodel_ = new_robot_model;
-
-  ftf_.reset(new SceneTransforms(this));
-
-  if (kstate_)
-  {
-    std::map<std::string, double> jsv;
-    kstate_->getStateValues(jsv);
-    kstate_.reset(new robot_state::RobotState(kmodel_));
-    kstate_->setStateValues(jsv);
-    kstate_->setAttachedBodyUpdateCallback(current_state_attached_body_callback_);
-  }
 }
 
 planning_scene::PlanningScene::PlanningScene(const PlanningSceneConstPtr &parent) :
   parent_(parent)
 {
   if (!parent_)
-    throw ConstructException("NULL parent pointer");
+    throw moveit::ConstructException("NULL parent pointer for planning scene");
 
   if (!parent_->getName().empty())
     name_ = parent_->getName() + "+";
@@ -394,7 +354,9 @@ bool planning_scene::PlanningScene::setActiveCollisionDetector(const std::string
   }
   else
   {
-    logError("No collision detector named %s has been added to PlanningScene", collision_detector_name.c_str());
+    logError("Cannot setActiveCollisionDetector to '%s' -- it has been added to PlanningScene.  Keeping existing active collision detector '%s'",
+      collision_detector_name.c_str(),
+      active_collision_->alloc_->getName().c_str());
     return false;
   }
 }
@@ -406,6 +368,52 @@ void planning_scene::PlanningScene::getCollisionDetectorNames(std::vector<std::s
   for (CollisionDetectorConstIterator it = collision_.begin() ; it != collision_.end() ; ++it)
     names.push_back(it->first);
 }
+
+const collision_detection::CollisionWorldConstPtr& planning_scene::PlanningScene::getCollisionWorld(
+      const std::string& collision_detector_name) const
+{
+  CollisionDetectorConstIterator it = collision_.find(collision_detector_name);
+  if (it == collision_.end())
+  {
+    logError("Could not get CollisionWorld named '%s'.  Returning active CollisionWorld '%s' instead",
+      collision_detector_name.c_str(),
+      active_collision_->alloc_->getName().c_str());
+    return active_collision_->cworld_const_;
+  }
+
+  return it->second->cworld_const_;
+}
+
+const collision_detection::CollisionRobotConstPtr& planning_scene::PlanningScene::getCollisionRobot(
+      const std::string& collision_detector_name) const
+{
+  CollisionDetectorConstIterator it = collision_.find(collision_detector_name);
+  if (it == collision_.end())
+  {
+    logError("Could not get CollisionRobot named '%s'.  Returning active CollisionRobot '%s' instead",
+      collision_detector_name.c_str(),
+      active_collision_->alloc_->getName().c_str());
+    return active_collision_->getCollisionRobot();
+  }
+
+  return it->second->getCollisionRobot();
+}
+
+const collision_detection::CollisionRobotConstPtr& planning_scene::PlanningScene::getCollisionRobotUnpadded(
+      const std::string& collision_detector_name) const
+{
+  CollisionDetectorConstIterator it = collision_.find(collision_detector_name);
+  if (it == collision_.end())
+  {
+    logError("Could not get CollisionRobotUnpadded named '%s'.  Returning active CollisionRobotUnpadded '%s' instead",
+      collision_detector_name.c_str(),
+      active_collision_->alloc_->getName().c_str());
+    return active_collision_->getCollisionRobotUnpadded();
+  }
+
+  return it->second->getCollisionRobotUnpadded();
+}
+
 
 void planning_scene::PlanningScene::clearDiffs()
 {
@@ -693,7 +701,6 @@ robot_state::Transforms& planning_scene::PlanningScene::getTransformsNonConst()
 void planning_scene::PlanningScene::getPlanningSceneDiffMsg(moveit_msgs::PlanningScene &scene_msg) const
 {
   scene_msg.name = name_;
-  scene_msg.robot_model_root = getRobotModel()->getRootLinkName();
   scene_msg.robot_model_name = getRobotModel()->getName();
   scene_msg.is_diff = true;
 
@@ -895,7 +902,6 @@ void planning_scene::PlanningScene::getPlanningSceneMsg(moveit_msgs::PlanningSce
 {
   scene_msg.name = name_;
   scene_msg.is_diff = false;
-  scene_msg.robot_model_root = getRobotModel()->getRootLinkName();
   scene_msg.robot_model_name = getRobotModel()->getName();
   getTransforms().copyTransforms(scene_msg.fixed_frame_transforms);
 
@@ -937,7 +943,6 @@ void planning_scene::PlanningScene::getPlanningSceneMsg(moveit_msgs::PlanningSce
   if (comp.components & moveit_msgs::PlanningSceneComponents::SCENE_SETTINGS)
   {
     scene_msg.name = name_;
-    scene_msg.robot_model_root = getRobotModel()->getRootLinkName();
     scene_msg.robot_model_name = getRobotModel()->getName();
   }
 
@@ -1176,9 +1181,6 @@ void planning_scene::PlanningScene::setPlanningSceneDiffMsg(const moveit_msgs::P
   if (!scene_msg.robot_model_name.empty() && scene_msg.robot_model_name != getRobotModel()->getName())
     logWarn("Setting the scene for model '%s' but model '%s' is loaded.", scene_msg.robot_model_name.c_str(), getRobotModel()->getName().c_str());
 
-  if (!scene_msg.robot_model_root.empty() && scene_msg.robot_model_root != getRobotModel()->getRootLinkName())
-    logWarn("Setting scene with robot model root '%s' but the current planning scene uses link '%s' as root.", scene_msg.robot_model_root.c_str(), getRobotModel()->getRootLinkName().c_str());
-
   // there is at least one transform in the list of fixed transform: from model frame to itself;
   // if the list is empty, then nothing has been set
   if (!scene_msg.fixed_frame_transforms.empty())
@@ -1243,10 +1245,6 @@ void planning_scene::PlanningScene::setPlanningSceneMsg(const moveit_msgs::Plann
 
   if (parent_)
     decoupleParent();
-
-  // re-parent the robot model if needed
-  if (!scene_msg.robot_model_root.empty() && scene_msg.robot_model_root != getRobotModel()->getRootLinkName())
-    setRootLink(scene_msg.robot_model_root);
 
   object_types_.reset();
   ftf_->setTransforms(scene_msg.fixed_frame_transforms);
@@ -2204,11 +2202,3 @@ void planning_scene::PlanningScene::printKnownObjects(std::ostream& out) const
     out << "\t " << attached_bodies[i]->getName() << "\n";
   }
 }
-
-planning_scene::PlanningScene::ConstructException::ConstructException(const std::string& what_arg) :
-  std::runtime_error(what_arg)
-{
-  logError("Error during construction of PlanningScene: %s.  Exception thrown.",
-           what_arg.c_str());
-}
-

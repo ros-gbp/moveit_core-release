@@ -1,3 +1,22 @@
+## moveit_core - 0.4.7-0
+
+User `isucan@e6400` released the packages in the `moveit_core` repository by running `/usr/local/bin/bloom-release --track groovy --ros-distro groovy moveit_core` on `Thu, 18 Jul 2013 08:30:13 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+- rosdistro version: `0.4.6-0`
+- old version: `0.4.6-0`
+- new version: `0.4.7-0`
+
+Versions of tools used:
+- bloom version: `0.4.2`
+- catkin_pkg version: `0.1.18`
+- rosdep version: `0.10.20`
+- rosdistro version: `0.2.12`
+- vcstools version: `0.1.31`
+
+
 ## moveit_core - 0.5.0-0
 
 User `isucan@e6400` released the packages in the `moveit_core` repository by running `/usr/local/bin/bloom-release --track hydro --ros-distro hydro -e moveit_core` on `Mon, 15 Jul 2013 08:09:16 -0000`

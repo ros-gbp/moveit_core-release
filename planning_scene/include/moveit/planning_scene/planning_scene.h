@@ -1,36 +1,36 @@
 /*********************************************************************
-* Software License Agreement (BSD License)
-*
-*  Copyright (c) 2011, Willow Garage, Inc.
-*  All rights reserved.
-*
-*  Redistribution and use in source and binary forms, with or without
-*  modification, are permitted provided that the following conditions
-*  are met:
-*
-*   * Redistributions of source code must retain the above copyright
-*     notice, this list of conditions and the following disclaimer.
-*   * Redistributions in binary form must reproduce the above
-*     copyright notice, this list of conditions and the following
-*     disclaimer in the documentation and/or other materials provided
-*     with the distribution.
-*   * Neither the name of the Willow Garage nor the names of its
-*     contributors may be used to endorse or promote products derived
-*     from this software without specific prior written permission.
-*
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-*  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-*  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-*  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-*  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-*  POSSIBILITY OF SUCH DAMAGE.
-*********************************************************************/
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2011, Willow Garage, Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 /* Author: Ioan Sucan, Acorn Pooley */
 
@@ -97,7 +97,6 @@ public:
                 const boost::shared_ptr<const srdf::Model> &srdf_model,
                 collision_detection::WorldPtr world = collision_detection::WorldPtr(new collision_detection::World()));
 
-  static const std::string COLLISION_MAP_NS;
   static const std::string OCTOMAP_NS;
   static const std::string DEFAULT_SCENE_NAME;
 
@@ -360,6 +359,19 @@ public:
                          const robot_state::RobotState &kstate,
                          const collision_detection::AllowedCollisionMatrix& acm) const;
 
+  /** \brief Get the names of the links that are involved in collisions for the current state */
+  void getCollidingPairs(collision_detection::CollisionResult::ContactMap &contacts) const;
+
+  /** \brief Get the names of the links that are involved in collisions for the state \e kstate */
+  void getCollidingPairs(collision_detection::CollisionResult::ContactMap &contacts,
+                         const robot_state::RobotState &kstate) const;
+
+  /** \brief  Get the names of the links that are involved in collisions for the state \e kstate given the
+      allowed collision matrix (\e acm) */
+  void getCollidingPairs(collision_detection::CollisionResult::ContactMap &contacts,
+                         const robot_state::RobotState &kstate,
+                         const collision_detection::AllowedCollisionMatrix& acm) const;
+
   /** \brief The distance between the robot model at state \e kstate to the nearest collision */
   double distanceToCollision(const robot_state::RobotState &kstate) const;
 
@@ -406,7 +418,6 @@ public:
 
   void processPlanningSceneWorldMsg(const moveit_msgs::PlanningSceneWorld &world);
 
-  void processCollisionMapMsg(const moveit_msgs::CollisionMap &map);
   void processOctomapMsg(const octomap_msgs::OctomapWithPose &map);
   void processOctomapMsg(const octomap_msgs::Octomap &map);
   void processOctomapPtr(const boost::shared_ptr<const octomap::OcTree> &octree, const Eigen::Affine3d &t);
@@ -610,7 +621,6 @@ private:
 
   void getPlanningSceneMsgCollisionObject(moveit_msgs::PlanningScene &scene, const std::string &ns) const;
   void getPlanningSceneMsgCollisionObjects(moveit_msgs::PlanningScene &scene) const;
-  void getPlanningSceneMsgCollisionMap(moveit_msgs::PlanningScene &scene) const;
   void getPlanningSceneMsgOctomap(moveit_msgs::PlanningScene &scene) const;
   void getPlanningSceneMsgObjectColors(moveit_msgs::PlanningScene &scene_msg) const;
 

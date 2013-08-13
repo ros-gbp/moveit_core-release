@@ -1,36 +1,36 @@
 /*********************************************************************
-* Software License Agreement (BSD License)
-*
-*  Copyright (c) 2011, Willow Garage, Inc.
-*  All rights reserved.
-*
-*  Redistribution and use in source and binary forms, with or without
-*  modification, are permitted provided that the following conditions
-*  are met:
-*
-*   * Redistributions of source code must retain the above copyright
-*     notice, this list of conditions and the following disclaimer.
-*   * Redistributions in binary form must reproduce the above
-*     copyright notice, this list of conditions and the following
-*     disclaimer in the documentation and/or other materials provided
-*     with the distribution.
-*   * Neither the name of the Willow Garage nor the names of its
-*     contributors may be used to endorse or promote products derived
-*     from this software without specific prior written permission.
-*
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-*  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-*  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-*  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-*  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-*  POSSIBILITY OF SUCH DAMAGE.
-*********************************************************************/
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2011, Willow Garage, Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 /* Author: Ioan Sucan */
 
@@ -87,10 +87,10 @@ static bool _jointStateToRobotState(const sensor_msgs::JointState &joint_state, 
   return true;
 }
 
-static bool multiDOFJointsToRobotState(const moveit_msgs::MultiDOFJointState &mjs, RobotState& state, const Transforms *tf)
+static bool multiDOFJointsToRobotState(const sensor_msgs::MultiDOFJointState &mjs, RobotState& state, const Transforms *tf)
 {
   std::size_t nj = mjs.joint_names.size();
-  if (nj != mjs.joint_transforms.size())
+  if (nj != mjs.transforms.size())
   {
     logError("Different number of names, values or frames in MultiDOFJointState message.");
     return false;
@@ -132,7 +132,7 @@ static bool multiDOFJointsToRobotState(const moveit_msgs::MultiDOFJointState &mj
       continue;
     }
     Eigen::Affine3d transf;
-    tf::transformMsgToEigen(mjs.joint_transforms[i], transf);
+    tf::transformMsgToEigen(mjs.transforms[i], transf);
 
     // if frames do not mach, attempt to transform
     if (use_inv_t)
@@ -145,19 +145,19 @@ static bool multiDOFJointsToRobotState(const moveit_msgs::MultiDOFJointState &mj
   return !error;
 }
 
-static inline void robotStateToMultiDOFJointState(const RobotState& state, moveit_msgs::MultiDOFJointState &mjs)
+static inline void robotStateToMultiDOFJointState(const RobotState& state, sensor_msgs::MultiDOFJointState &mjs)
 {
   // \todo it would be nice if the robot model had a list of index values for the multi-dof joints (same for single-dof joints)
   const std::vector<JointState*> &js = state.getJointStateVector();
   mjs.joint_names.clear();
-  mjs.joint_transforms.clear();
+  mjs.transforms.clear();
   for (std::size_t i = 0 ; i < js.size() ; ++i)
     if (js[i]->getVariableCount() > 1)
     {
       geometry_msgs::Transform p;
       tf::transformEigenToMsg(js[i]->getVariableTransform(), p);
       mjs.joint_names.push_back(js[i]->getName());
-      mjs.joint_transforms.push_back(p);
+      mjs.transforms.push_back(p);
     }
   mjs.header.frame_id = state.getRobotModel()->getModelFrame();
 }

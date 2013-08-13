@@ -14,7 +14,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of the Willow Garage nor the names of its
+ *   * Neither the name of Willow Garage nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -44,7 +44,6 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <moveit_msgs/CollisionMap.h>
 #include <eigen_stl_containers/eigen_stl_containers.h>
 #include <geometric_shapes/shapes.h>
 

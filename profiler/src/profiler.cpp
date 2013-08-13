@@ -1,43 +1,42 @@
 /*********************************************************************
-* Software License Agreement (BSD License)
-*
-*  Copyright (c) 2008, Willow Garage, Inc.
-*  All rights reserved.
-*
-*  Redistribution and use in source and binary forms, with or without
-*  modification, are permitted provided that the following conditions
-*  are met:
-*
-*   * Redistributions of source code must retain the above copyright
-*     notice, this list of conditions and the following disclaimer.
-*   * Redistributions in binary form must reproduce the above
-*     copyright notice, this list of conditions and the following
-*     disclaimer in the documentation and/or other materials provided
-*     with the distribution.
-*   * Neither the name of the Willow Garage nor the names of its
-*     contributors may be used to endorse or promote products derived
-*     from this software without specific prior written permission.
-*
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-*  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-*  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-*  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-*  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-*  POSSIBILITY OF SUCH DAMAGE.
-*********************************************************************/
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2008, Willow Garage, Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
-
-/** Author: Ioan Sucan */
+/* Author: Ioan Sucan */
 
 #include "moveit/profiler/profiler.h"
 
-moveit::Profiler& moveit::Profiler::Instance(void)
+moveit::tools::Profiler& moveit::tools::Profiler::Instance(void)
 {
   static Profiler p(false, false);
   return p;
@@ -50,7 +49,7 @@ moveit::Profiler& moveit::Profiler::Instance(void)
 #include <algorithm>
 #include <sstream>
 
-void moveit::Profiler::start(void)
+void moveit::tools::Profiler::start(void)
 {
   lock_.lock();
   if (!running_)
@@ -61,7 +60,7 @@ void moveit::Profiler::start(void)
   lock_.unlock();
 }
 
-void moveit::Profiler::stop(void)
+void moveit::tools::Profiler::stop(void)
 {
   lock_.lock();
   if (running_)
@@ -72,7 +71,7 @@ void moveit::Profiler::stop(void)
   lock_.unlock();
 }
 
-void moveit::Profiler::clear(void)
+void moveit::tools::Profiler::clear(void)
 {
   lock_.lock();
   data_.clear();
@@ -82,14 +81,14 @@ void moveit::Profiler::clear(void)
   lock_.unlock();
 }
 
-void moveit::Profiler::event(const std::string &name, const unsigned int times)
+void moveit::tools::Profiler::event(const std::string &name, const unsigned int times)
 {
   lock_.lock();
   data_[boost::this_thread::get_id()].events[name] += times;
   lock_.unlock();
 }
 
-void moveit::Profiler::average(const std::string &name, const double value)
+void moveit::tools::Profiler::average(const std::string &name, const double value)
 {
   lock_.lock();
   AvgInfo &a = data_[boost::this_thread::get_id()].avg[name];
@@ -99,14 +98,14 @@ void moveit::Profiler::average(const std::string &name, const double value)
   lock_.unlock();
 }
 
-void moveit::Profiler::begin(const std::string &name)
+void moveit::tools::Profiler::begin(const std::string &name)
 {
   lock_.lock();
   data_[boost::this_thread::get_id()].time[name].set();
   lock_.unlock();
 }
 
-void moveit::Profiler::end(const std::string &name)
+void moveit::tools::Profiler::end(const std::string &name)
 {
   lock_.lock();
   data_[boost::this_thread::get_id()].time[name].update();
@@ -123,7 +122,7 @@ inline double to_seconds(const boost::posix_time::time_duration &d)
 
 }
 
-void moveit::Profiler::status(std::ostream &out, bool merge)
+void moveit::tools::Profiler::status(std::ostream &out, bool merge)
 {
   stop();
   lock_.lock();
@@ -167,7 +166,7 @@ void moveit::Profiler::status(std::ostream &out, bool merge)
   lock_.unlock();
 }
 
-void moveit::Profiler::console(void)
+void moveit::tools::Profiler::console(void)
 {
   std::stringstream ss;
   ss << std::endl;
@@ -209,7 +208,7 @@ struct SortDoubleByValue
 }
 /// @endcond
 
-void moveit::Profiler::printThreadInfo(std::ostream &out, const PerThread &data)
+void moveit::tools::Profiler::printThreadInfo(std::ostream &out, const PerThread &data)
 {
   double total = to_seconds(tinfo_.total);
 

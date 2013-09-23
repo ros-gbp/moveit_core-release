@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2010, Willow Garage, Inc.
+ *  Copyright (c) 2013, Willow Garage, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Willow Garage nor the names of its
+ *   * Neither the name of the Willow Garage nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -34,28 +34,37 @@
 
 /* Author: Ioan Sucan */
 
-#include <moveit/robot_state/state_transforms.h>
-#include <moveit/robot_state/robot_state.h>
-
-robot_state::StateTransforms::StateTransforms(const std::string &target_frame, const RobotStateConstPtr &state) :
-  Transforms(target_frame),
-  state_(state)
+namespace moveit
 {
-  if (state_ && !sameFrame(state_->getRobotModel()->getModelFrame(), target_frame_))
-    logError("Target frame is assumed to be '%s' but the model of the robot state places the robot in frame '%s'",
-             target_frame_.c_str(), state_->getRobotModel()->getModelFrame().c_str());
+namespace core
+{
+namespace
+{
+
+struct OrderLinksByIndex
+{
+  bool operator()(const LinkModel *a, const LinkModel *b) const
+  {
+    return a->getLinkIndex() < b->getLinkIndex();
+  }
+};
+
+struct OrderJointsByIndex
+{
+  bool operator()(const JointModel *a, const JointModel *b) const
+  {
+    return a->getJointIndex() < b->getJointIndex();
+  }
+};
+
+struct OrderGroupsByName
+{
+  bool operator()(const JointModelGroup *a, const JointModelGroup *b) const
+  {
+    return a->getName() < b->getName();
+  }
+};
+
 }
-
-bool robot_state::StateTransforms::canTransform(const std::string &from_frame) const
-{
-  if (state_ && state_->knowsFrameTransform(from_frame))
-    return true;
-  return Transforms::canTransform(from_frame);
 }
-
-const Eigen::Affine3d& robot_state::StateTransforms::getTransform(const std::string &from_frame) const
-{
-  if (state_ && state_->knowsFrameTransform(from_frame))
-    return state_->getFrameTransform(from_frame);
-  return Transforms::getTransform(from_frame);
 }

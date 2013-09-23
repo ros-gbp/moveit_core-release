@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2012, Willow Garage, Inc.
+ *  Copyright (c) 2013, Willow Garage, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,31 +32,32 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-/* Author: Ioan Sucan */
+/* Author: Acorn Pooley */
 
-#ifndef MOVEIT_ROBOT_STATE_STATE_TRANSFORMS_
-#define MOVEIT_ROBOT_STATE_STATE_TRANSFORMS_
+#include <moveit/distance_field/find_internal_points.h>
 
-#include <moveit/transforms/transforms.h>
-
-namespace robot_state
+void distance_field::findInternalPointsConvex(
+      const bodies::Body& body,
+      double resolution,
+      EigenSTL::vector_Vector3d& points)
 {
-
-MOVEIT_CLASS_FORWARD(RobotState);
-
-class StateTransforms : public Transforms
-{
-public:
-  StateTransforms(const std::string &target_frame, const RobotStateConstPtr &state);
-
-  virtual bool canTransform(const std::string &from_frame) const;
-  virtual const Eigen::Affine3d& getTransform(const std::string &from_frame) const;
-
-protected:
-
-  RobotStateConstPtr state_;
-};
-
+  bodies::BoundingSphere sphere;
+  body.computeBoundingSphere(sphere);
+  double xval_s = std::floor((sphere.center.x() - sphere.radius - resolution) / resolution) * resolution;
+  double yval_s = std::floor((sphere.center.y() - sphere.radius - resolution) / resolution) * resolution;
+  double zval_s = std::floor((sphere.center.z() - sphere.radius - resolution) / resolution) * resolution;
+  double xval_e = sphere.center.x() + sphere.radius + resolution;
+  double yval_e = sphere.center.y() + sphere.radius + resolution;
+  double zval_e = sphere.center.z() + sphere.radius + resolution;
+  Eigen::Vector3d pt;
+  for(pt.x() = xval_s; pt.x() <= xval_e; pt.x() += resolution) {
+    for(pt.y() = yval_s; pt.y() <= yval_e; pt.y() += resolution) {
+      for(pt.z() = zval_s; pt.z() <= zval_e; pt.z() += resolution) {
+        if(body.containsPoint(pt)) {
+          points.push_back(pt);
+        }
+      }
+    }
+  }
 }
 
-#endif

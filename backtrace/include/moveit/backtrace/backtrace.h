@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2011, Willow Garage, Inc.
+ *  Copyright (c) 2013, Willow Garage, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,44 +32,37 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-/* Author: Ken Anderson */
+#ifndef MOVEIT_BACKTRACE_
+#define MOVEIT_BACKTARCE_
 
-#ifndef MOVEIT_TRAJECTORY_PROCESSING_ITERATIVE_PARABOLIC_SMOOTHER_
-#define MOVEIT_TRAJECTORY_PROCESSING_ITERATIVE_PARABOLIC_SMOOTHER_
+#include <iostream>
 
-#include <trajectory_msgs/JointTrajectory.h>
-#include <moveit_msgs/JointLimits.h>
-#include <moveit_msgs/RobotState.h>
-#include <moveit/robot_trajectory/robot_trajectory.h>
-
-namespace trajectory_processing
+namespace moveit
 {
 
-/// \brief This class  modifies the timestamps of a trajectory to respect
-/// velocity and acceleration constraints.
-class IterativeParabolicTimeParameterization
+/** \brief Get the current backtrace. This may not work on all compilers */
+void get_backtrace(std::ostream &out);
+
+#ifdef __GLIBC__
+#include <execinfo.h>
+void get_backtrace(std::ostream &out)
 {
-public:
-  IterativeParabolicTimeParameterization(unsigned int max_iterations = 100,
-                                         double max_time_change_per_it = .01);
-  ~IterativeParabolicTimeParameterization();
-
-  bool computeTimeStamps(robot_trajectory::RobotTrajectory& trajectory) const;
-
-private:
-
-  unsigned int max_iterations_;         /// @brief maximum number of iterations to find solution
-  double max_time_change_per_it_;       /// @brief maximum allowed time change per iteration in seconds
-
-  void applyVelocityConstraints(robot_trajectory::RobotTrajectory& rob_trajectory,
-                                std::vector<double> &time_diff) const;
-
-  void applyAccelerationConstraints(robot_trajectory::RobotTrajectory& rob_trajectory,
-                                    std::vector<double> & time_diff) const;
-
-  double findT1( const double d1, const double d2, double t1, const double t2, const double a_max) const;
-  double findT2( const double d1, const double d2, const double t1, double t2, const double a_max) const;
-};
+  void *array[500];
+  size_t size = backtrace(array, 500);
+  char **strings = backtrace_symbols((void *const *)array, size);
+  out << "Backtrace:" << std::endl;
+  for (size_t i = 0; i < size; ++i)
+  {
+    out << "  " << strings[i] << std::endl;
+  }
+  free(strings);
+}
+#else
+void get_backtrace(std::ostream &out)
+{
+  out << "Unable to get backtrace with the used compiler." << std::endl;
+}
+#endif
 
 }
 

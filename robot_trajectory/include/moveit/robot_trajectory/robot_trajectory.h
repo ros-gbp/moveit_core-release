@@ -45,6 +45,8 @@
 namespace robot_trajectory
 {
 
+/** \brief Maintain a sequence of waypoints and the time durations
+    between these waypoints */
 class RobotTrajectory
 {
 public:
@@ -52,7 +54,7 @@ public:
 
   const robot_model::RobotModelConstPtr& getRobotModel() const
   {
-    return kmodel_;
+    return robot_model_;
   }
 
   const robot_model::JointModelGroup* getGroup() const
@@ -137,6 +139,7 @@ public:
 
   void addSuffixWayPoint(const robot_state::RobotStatePtr &state, double dt)
   {
+    state->update();
     waypoints_.push_back(state);
     duration_from_previous_.push_back(dt);
   }
@@ -148,6 +151,7 @@ public:
 
   void addPrefixWayPoint(const robot_state::RobotStatePtr &state, double dt)
   {
+    state->update();
     waypoints_.push_front(state);
     duration_from_previous_.push_front(dt);
   }
@@ -159,6 +163,7 @@ public:
 
   void insertWayPoint(std::size_t index, const robot_state::RobotStatePtr &state, double dt)
   {
+    state->update();
     waypoints_.insert(waypoints_.begin() + index, state);
     duration_from_previous_.insert(duration_from_previous_.begin() + index, dt);
   }
@@ -173,11 +178,24 @@ public:
 
   void getRobotTrajectoryMsg(moveit_msgs::RobotTrajectory &trajectory) const;
 
+  /** \brief Copy the content of the trajectory message into this class. The trajectory message itself is not required to contain the values
+      for all joints. For this reason a full starting state must be specified as reference (\e reference_state). Each point in the trajectory 
+      to be constructed internally is obtained by copying the reference state and overwriting the content from a trajectory point in \e trajectory. */
+  void setRobotTrajectoryMsg(const robot_state::RobotState &reference_state,
+                             const trajectory_msgs::JointTrajectory &trajectory);
+  
+  /** \brief Copy the content of the trajectory message into this class. The trajectory message itself is not required to contain the values
+      for all joints. For this reason a full starting state must be specified as reference (\e reference_state). Each point in the trajectory 
+      to be constructed internally is obtained by copying the reference state and overwriting the content from a trajectory point in \e trajectory. */
   void setRobotTrajectoryMsg(const robot_state::RobotState &reference_state,
                              const moveit_msgs::RobotTrajectory &trajectory);
+  
+  /** \brief Copy the content of the trajectory message into this class. The trajectory message itself is not required to contain the values
+      for all joints. For this reason a full starting state must be specified as reference (\e reference_state). Before use, the reference state is updated
+      using \e state. Each point in the trajectory  to be constructed internally is obtained by copying the reference state and overwriting the content 
+      from a trajectory point in \e trajectory. */
   void setRobotTrajectoryMsg(const robot_state::RobotState &reference_state,
                              const moveit_msgs::RobotState &state, const moveit_msgs::RobotTrajectory &trajectory);
-
 
   void reverse();
 
@@ -203,7 +221,7 @@ public:
 
 private:
 
-  robot_model::RobotModelConstPtr kmodel_;
+  robot_model::RobotModelConstPtr robot_model_;
   const robot_model::JointModelGroup *group_;
   std::deque<robot_state::RobotStatePtr> waypoints_;
   std::deque<double> duration_from_previous_;

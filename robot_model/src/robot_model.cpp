@@ -555,8 +555,21 @@ void moveit::core::RobotModel::buildGroupsInfo_EndEffectors(const srdf::Model &s
         it->second->setEndEffectorName(eefs[k].name_);
         end_effectors_map_[eefs[k].name_] = it->second;
         end_effectors_.push_back(it->second);
+        
+        // check to see if there are groups that contain the parent link of this end effector.
+        // record this information if found; 
+        std::vector<JointModelGroup*> possible_parent_groups;
+        for (JointModelGroupMap::const_iterator jt = joint_model_group_map_.begin() ; jt != joint_model_group_map_.end(); ++jt)
+          if (jt->first != it->first)
+          {
+            if (jt->second->hasLinkModel(eefs[k].parent_link_))
+            {
+              jt->second->attachEndEffector(eefs[k].name_);
+              possible_parent_groups.push_back(jt->second);
+            }
+          }
+        
         JointModelGroup *eef_parent_group = NULL;
-
         // if a parent group is specified in SRDF, try to use it
         if (!eefs[k].parent_group_.empty())
         {
@@ -578,18 +591,9 @@ void moveit::core::RobotModel::buildGroupsInfo_EndEffectors(const srdf::Model &s
             logError("Group name '%s' not found (specified as parent group for end-effector '%s')",
                      eefs[k].parent_group_.c_str(), eefs[k].name_.c_str());
         }
-        
+
+        // if no parent group was specified, use a default one
         if (eef_parent_group == NULL)
-        {
-          // check to see if there are groups that contain the parent link of this end effector.
-          // record this information if found
-          std::vector<JointModelGroup*> possible_parent_groups;
-          for (JointModelGroupMap::const_iterator jt = joint_model_group_map_.begin() ; jt != joint_model_group_map_.end(); ++jt)
-            if (jt->first != it->first)
-            {
-              if (jt->second->hasLinkModel(eefs[k].parent_link_))
-                possible_parent_groups.push_back(jt->second);
-            }
           if (!possible_parent_groups.empty())
           {
             // if there are multiple options for the group that contains this end-effector,
@@ -600,18 +604,16 @@ void moveit::core::RobotModel::buildGroupsInfo_EndEffectors(const srdf::Model &s
                 best = g;
             eef_parent_group = possible_parent_groups[best];
           }
-        }
+        
         if (eef_parent_group)
         {
-          //attached_end_effector_names_.push_back(
-          eef_parent_group->attachEndEffector(eefs[k].name_);
           it->second->setEndEffectorParent(eef_parent_group->getName(), eefs[k].parent_link_);
         }
         else
         {
           logWarn("Could not identify parent group for end-effector '%s'", eefs[k].name_.c_str());
           it->second->setEndEffectorParent("", eefs[k].parent_link_);
-        }        
+        }
         break;
       }
   }
@@ -1112,33 +1114,33 @@ void moveit::core::RobotModel::updateMimicJoints(double *values) const
   }
 }
 
-void moveit::core::RobotModel::getVariableRandomValues(random_numbers::RandomNumberGenerator &rng, double *values) const
+void moveit::core::RobotModel::getVariableRandomPositions(random_numbers::RandomNumberGenerator &rng, double *values) const
 {
   for (std::size_t i = 0 ; i < active_joint_model_vector_.size() ; ++i)
-    active_joint_model_vector_[i]->getVariableRandomValues(rng, values + active_joint_model_start_index_[i]);
+    active_joint_model_vector_[i]->getVariableRandomPositions(rng, values + active_joint_model_start_index_[i]);
   updateMimicJoints(values);
 }
 
-void moveit::core::RobotModel::getVariableRandomValues(random_numbers::RandomNumberGenerator &rng, std::map<std::string, double> &values) const
+void moveit::core::RobotModel::getVariableRandomPositions(random_numbers::RandomNumberGenerator &rng, std::map<std::string, double> &values) const
 {
   std::vector<double> tmp(variable_count_);
-  getVariableRandomValues(rng, &tmp[0]);
+  getVariableRandomPositions(rng, &tmp[0]);
   values.clear();
   for (std::size_t i = 0 ; i < variable_names_.size() ; ++i)
     values[variable_names_[i]] = tmp[i];
 }
 
-void moveit::core::RobotModel::getVariableDefaultValues(double *values) const
+void moveit::core::RobotModel::getVariableDefaultPositions(double *values) const
 {
   for (std::size_t i = 0 ; i < active_joint_model_vector_.size() ; ++i)
-    active_joint_model_vector_[i]->getVariableDefaultValues(values + active_joint_model_start_index_[i]);
+    active_joint_model_vector_[i]->getVariableDefaultPositions(values + active_joint_model_start_index_[i]);
   updateMimicJoints(values);
 }
 
-void moveit::core::RobotModel::getVariableDefaultValues(std::map<std::string, double> &values) const
+void moveit::core::RobotModel::getVariableDefaultPositions(std::map<std::string, double> &values) const
 {
   std::vector<double> tmp(variable_count_);
-  getVariableDefaultValues(&tmp[0]);
+  getVariableDefaultPositions(&tmp[0]);
   values.clear();
   for (std::size_t i = 0 ; i < variable_names_.size() ; ++i)
     values[variable_names_[i]] = tmp[i];
@@ -1170,21 +1172,21 @@ double moveit::core::RobotModel::getMaximumExtent(const JointBoundsVector &activ
   return max_distance;
 }
 
-bool moveit::core::RobotModel::satisfiesBounds(const double *state, const JointBoundsVector &active_joint_bounds, double margin) const
+bool moveit::core::RobotModel::satisfiesPositionBounds(const double *state, const JointBoundsVector &active_joint_bounds, double margin) const
 {
   assert(active_joint_bounds.size() == active_joint_model_vector_.size());
   for (std::size_t i = 0 ; i < active_joint_model_vector_.size() ; ++i)
-    if (!active_joint_model_vector_[i]->satisfiesBounds(state + active_joint_model_start_index_[i], *active_joint_bounds[i], margin))
+    if (!active_joint_model_vector_[i]->satisfiesPositionBounds(state + active_joint_model_start_index_[i], *active_joint_bounds[i], margin))
       return false;
   return true;
 }
 
-bool moveit::core::RobotModel::enforceBounds(double *state, const JointBoundsVector &active_joint_bounds) const
+bool moveit::core::RobotModel::enforcePositionBounds(double *state, const JointBoundsVector &active_joint_bounds) const
 {
   assert(active_joint_bounds.size() == active_joint_model_vector_.size());
   bool change = false;
   for (std::size_t i = 0 ; i < active_joint_model_vector_.size() ; ++i)
-    if (active_joint_model_vector_[i]->enforceBounds(state + active_joint_model_start_index_[i], *active_joint_bounds[i]))
+    if (active_joint_model_vector_[i]->enforcePositionBounds(state + active_joint_model_start_index_[i], *active_joint_bounds[i]))
       change = true;
   if (change)
     updateMimicJoints(state);

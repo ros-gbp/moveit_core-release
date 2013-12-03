@@ -125,8 +125,8 @@ void moveit::core::RobotState::copyFrom(const RobotState &other)
     const int nr_doubles_for_dirty_joint_transforms = 1 + robot_model_->getJointModelCount() / (sizeof(double)/sizeof(unsigned char));
     const size_t bytes = sizeof(Eigen::Affine3d) * (robot_model_->getJointModelCount() + robot_model_->getLinkModelCount() + robot_model_->getLinkGeometryCount())
       + sizeof(double) * (robot_model_->getVariableCount() * (1 + ((has_velocity_ || has_acceleration_ || has_effort_) ? 1 : 0) +
-                                                              ((has_acceleration_ || has_effort_ ) ? 1 : 0)) + nr_doubles_for_dirty_joint_transforms) + 15;
-    memcpy(memory_, other.memory_, bytes);
+                                                              ((has_acceleration_ || has_effort_ ) ? 1 : 0)) + nr_doubles_for_dirty_joint_transforms);
+    memcpy(variable_joint_transforms_, other.variable_joint_transforms_, bytes);
   }
   
   // copy attached bodies
@@ -826,7 +826,7 @@ const Eigen::Affine3d& moveit::core::RobotState::getFrameTransform(const std::st
 {
   if (!id.empty() && id[0] == '/')
     return getFrameTransform(id.substr(1)); 
-  assert(checkLinkTransforms());
+  BOOST_VERIFY(checkLinkTransforms());
   
   static const Eigen::Affine3d identity_transform = Eigen::Affine3d::Identity();
   if (id.size() + 1 == robot_model_->getModelFrame().size() && '/' + id == robot_model_->getModelFrame())
@@ -961,7 +961,7 @@ Eigen::MatrixXd moveit::core::RobotState::getJacobian(const JointModelGroup *gro
 bool moveit::core::RobotState::getJacobian(const JointModelGroup *group, const LinkModel *link, const Eigen::Vector3d &reference_point_position,
                                            Eigen::MatrixXd& jacobian, bool use_quaternion_representation) const
 {
-  assert(checkLinkTransforms());
+  BOOST_VERIFY(checkLinkTransforms());
   
   if (!group->isChain())
   {
@@ -975,7 +975,7 @@ bool moveit::core::RobotState::getJacobian(const JointModelGroup *group, const L
     return false;
   }
 
-  const robot_model::JointModel* root_joint_model = group->getJointRoots()[0];
+  const robot_model::JointModel* root_joint_model = group->getJointModels()[0];//group->getJointRoots()[0];
   const robot_model::LinkModel* root_link_model = root_joint_model->getParentLinkModel();
   Eigen::Affine3d reference_transform = root_link_model ? getGlobalLinkTransform(root_link_model).inverse() : Eigen::Affine3d::Identity();
   int rows = use_quaternion_representation ? 7 : 6;
@@ -1712,7 +1712,7 @@ static inline void updateAABB(const Eigen::Affine3d &t, const Eigen::Vector3d &e
 
 void robot_state::RobotState::computeAABB(std::vector<double> &aabb) const
 {
-  assert(checkLinkTransforms());
+  BOOST_VERIFY(checkLinkTransforms());
   
   aabb.clear();
   std::vector<const LinkModel*> links = robot_model_->getLinkModelsWithCollisionGeometry();

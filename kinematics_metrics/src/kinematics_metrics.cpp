@@ -103,6 +103,12 @@ bool KinematicsMetrics::getManipulabilityIndex(const robot_state::RobotState &st
                                                double &manipulability_index,
                                                bool translation) const
 {
+  // state.getJacobian() only works for chain groups.
+  if(!joint_model_group->isChain())
+  {
+    return false;
+  }
+
   Eigen::MatrixXd jacobian = state.getJacobian(joint_model_group);
   // Get joint limits penalty
   double penalty = getJointLimitsPenalty(state, joint_model_group);
@@ -139,6 +145,12 @@ bool KinematicsMetrics::getManipulabilityEllipsoid(const robot_state::RobotState
                                                    Eigen::MatrixXcd &eigen_values,
                                                    Eigen::MatrixXcd &eigen_vectors) const
 {
+  // state.getJacobian() only works for chain groups.
+  if(!joint_model_group->isChain())
+  {
+    return false;
+  }
+
   Eigen::MatrixXd jacobian = state.getJacobian(joint_model_group);
   Eigen::MatrixXd matrix = jacobian*jacobian.transpose();
   Eigen::EigenSolver<Eigen::MatrixXd> eigensolver(matrix.block(0, 0, 3, 3));
@@ -164,6 +176,11 @@ bool KinematicsMetrics::getManipulability(const robot_state::RobotState &state,
                                           double &manipulability,
                                           bool translation) const
 {
+  // state.getJacobian() only works for chain groups.
+  if(!joint_model_group->isChain())
+  {
+    return false;
+  }
   // Get joint limits penalty
   double penalty = getJointLimitsPenalty(state, joint_model_group);
   if (translation)
@@ -172,7 +189,7 @@ bool KinematicsMetrics::getManipulability(const robot_state::RobotState &state,
     Eigen::JacobiSVD<Eigen::MatrixXd> svdsolver(jacobian.topLeftCorner(3,jacobian.cols()));
     Eigen::MatrixXd singular_values = svdsolver.singularValues();
     for (unsigned int i = 0; i < singular_values.rows(); ++i)
-      logDebug("Singular value: %d %f",i,singular_values(i,0));
+      logDebug("moveit.kin_metrics: Singular value: %d %f",i,singular_values(i,0));
     manipulability = penalty * singular_values.minCoeff()/singular_values.maxCoeff();
   }
   else
@@ -181,7 +198,7 @@ bool KinematicsMetrics::getManipulability(const robot_state::RobotState &state,
     Eigen::JacobiSVD<Eigen::MatrixXd> svdsolver(jacobian);
     Eigen::MatrixXd singular_values = svdsolver.singularValues();
     for(unsigned int i=0; i < singular_values.rows(); ++i)
-      logDebug("Singular value: %d %f",i,singular_values(i,0));
+      logDebug("moveit.kin_metrics: Singular value: %d %f",i,singular_values(i,0));
     manipulability = penalty * singular_values.minCoeff()/singular_values.maxCoeff();
   }
   return true;

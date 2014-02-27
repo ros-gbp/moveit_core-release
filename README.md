@@ -1,3 +1,22 @@
+## moveit_core (hydro) - 0.5.7-0
+
+User `schitta@schitta-pc` released the packages in the `moveit_core` repository into the `hydro` distro by running `/usr/bin/bloom-release moveit_core --track hydro --rosdistro hydro` on `Thu, 27 Feb 2014 22:20:50 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+- rosdistro version: `0.5.6-0`
+- old version: `0.5.6-0`
+- new version: `0.5.7-0`
+
+Versions of tools used:
+- bloom version: `0.5.1`
+- catkin_pkg version: `0.1.26`
+- rosdep version: `0.10.25`
+- rosdistro version: `0.3.4`
+- vcstools version: `0.1.33`
+
+
 ## moveit_core - 0.5.6-0
 
 User `isucan@isucan-glaptop0` released the packages in the `moveit_core` repository by running `/usr/bin/bloom-release -t indigo -r indigo moveit_core --new-track` on `Sat, 22 Feb 2014 18:44:56 -0000`

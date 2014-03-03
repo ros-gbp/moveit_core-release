@@ -103,6 +103,7 @@ static bool _multiDOFJointsToRobotState(const sensor_msgs::MultiDOFJointState &m
       }
     else
       error = true;
+
     if (error)
       logWarn("The transform for multi-dof joints was specified in frame '%s' but it was not possible to transform that to frame '%s'",
               mjs.header.frame_id.c_str(), state.getRobotModel()->getModelFrame().c_str());
@@ -337,7 +338,7 @@ static bool _robotStateMsgToRobotStateHelper(const Transforms *tf, const moveit_
   std::set<std::string> missing;
   bool result1 = _jointStateToRobotState(robot_state.joint_state, state, &missing);
   bool result2 = _multiDOFJointsToRobotState(robot_state.multi_dof_joint_state, state, tf);
-  
+
   if (copy_attached_bodies)
   {
     if (!robot_state.is_diff)
@@ -359,8 +360,7 @@ static bool _robotStateMsgToRobotStateHelper(const Transforms *tf, const moveit_
             missing.erase(vnames[i]);
         }
       }
-    
-    return missing.empty();
+    return true;
   }
   else
     return false;

@@ -1,3 +1,22 @@
+## moveit_core (indigo) - 0.5.8-0
+
+User `isucan@isucan-glaptop0` released the packages in the `moveit_core` repository into the `indigo` distro by running `/usr/bin/bloom-release -t indigo -r indigo moveit_core` on `Mon, 03 Mar 2014 08:34:17 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+- rosdistro version: `0.5.6-0`
+- old version: `0.5.6-0`
+- new version: `0.5.8-0`
+
+Versions of tools used:
+- bloom version: `0.5.1`
+- catkin_pkg version: `0.1.26`
+- rosdep version: `0.10.25`
+- rosdistro version: `0.3.4`
+- vcstools version: `0.1.33`
+
+
 ## moveit_core (hydro) - 0.5.8-0
 
 User `isucan@isucan-glaptop0` released the packages in the `moveit_core` repository into the `hydro` distro by running `/usr/bin/bloom-release -t hydro -r hydro moveit_core` on `Mon, 03 Mar 2014 08:25:18 -0000`

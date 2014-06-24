@@ -33,7 +33,7 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-/* Author: Ioan Sucan, Sachin Chitta, Acorn Pooley, Mario Prats */
+/* Author: Ioan Sucan, Sachin Chitta, Acorn Pooley, Mario Prats, Dave Coleman */
 
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/transforms/transforms.h>
@@ -471,7 +471,7 @@ void moveit::core::RobotState::updateLinkTransforms()
 void moveit::core::RobotState::updateLinkTransformsInternal(const JointModel *start)
 {  
   const std::vector<const LinkModel*> &links = start->getDescendantLinkModels();
-  if (links.size() > 0)
+  if (!links.empty())
   { 
     const LinkModel *parent = links[0]->getParentLinkModel();
     if (parent)
@@ -1100,9 +1100,9 @@ void moveit::core::RobotState::computeVariableVelocity(const JointModelGroup *jm
   Eigen::VectorXd Sinv = S;
   static const double pinvtoler = std::numeric_limits<float>::epsilon();
   double maxsv = 0.0 ;
-  for (std::size_t i = 0; i < S.rows(); ++i)
+  for (std::size_t i = 0; i < static_cast<std::size_t>(S.rows()); ++i)
     if (fabs(S(i)) > maxsv) maxsv = fabs(S(i));
-  for (std::size_t i = 0; i < S.rows(); ++i)
+  for (std::size_t i = 0; i < static_cast<std::size_t>(S.rows()); ++i)
   {
     //Those singular values smaller than a percentage of the maximum singular value are removed
     if (fabs(S(i)) > maxsv * pinvtoler)
@@ -1200,6 +1200,7 @@ bool ikCallbackFnAdapter(RobotState *state, const JointModelGroup *group, const 
     error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
   else
     error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+  return true;
 }
 }
 }
@@ -1231,47 +1232,62 @@ bool moveit::core::RobotState::setFromIK(const JointModelGroup *jmg, const Eigen
     pose = getGlobalLinkTransform(lm).inverse() * pose;
   }
 
-  // see if the tip frame can be transformed via fixed transforms to the frame known to the IK solver
-  std::string tip_frame = solver->getTipFrame();
-
-  // remove the frame '/' if there is one, so we can avoid calling Transforms::sameFrame() which may copy strings more often that we need to
-  if (!tip_frame.empty() && tip_frame[0] == '/')
-    tip_frame = tip_frame.substr(1);
-  
-  if (tip != tip_frame)
+  // try all of the solver's possible tip frames to see if one works with our passed in pose tip frame
+  bool found_valid_frame = false;
+  for (std::vector<std::string>::const_iterator tip_frame_it = solver->getTipFrames().begin();
+       tip_frame_it < solver->getTipFrames().end(); ++tip_frame_it)
   {
-    if (hasAttachedBody(tip))
-    {
-      const AttachedBody *ab = getAttachedBody(tip);
-      const EigenSTL::vector_Affine3d &ab_trans = ab->getFixedTransforms();
-      if (ab_trans.size() != 1)
-      {
-        logError("Cannot use an attached body with multiple geometries as a reference frame.");
-        return false;
-      }
-      tip = ab->getAttachedLinkName();
-      pose = pose * ab_trans[0].inverse();
-    }
+    // see if the tip frame can be transformed via fixed transforms to the frame known to the IK solver
+    std::string tip_frame = *tip_frame_it;
+    logDebug("moveit.robot_state: checking solver tip frame %s against request tip frame %s", tip_frame.c_str(), tip.c_str());
+
+    // remove the frame '/' if there is one, so we can avoid calling Transforms::sameFrame() which may copy strings more often that we need to
+    if (!tip_frame.empty() && tip_frame[0] == '/')
+      tip_frame = tip_frame.substr(1);
+
     if (tip != tip_frame)
     {
-      const robot_model::LinkModel *lm = getLinkModel(tip);
-      if (!lm)
-        return false;
-      const robot_model::LinkTransformMap &fixed_links = lm->getAssociatedFixedTransforms();
-      for (robot_model::LinkTransformMap::const_iterator it = fixed_links.begin() ; it != fixed_links.end() ; ++it)
-        if (Transforms::sameFrame(it->first->getName(), tip_frame))
+      if (hasAttachedBody(tip))
+      {
+        const AttachedBody *ab = getAttachedBody(tip);
+        const EigenSTL::vector_Affine3d &ab_trans = ab->getFixedTransforms();
+        if (ab_trans.size() != 1)
         {
-          tip = tip_frame;
-          pose = pose * it->second;
-          break;
+          logError("Cannot use an attached body with multiple geometries as a reference frame.");
+          return false;
         }
+        tip = ab->getAttachedLinkName();
+        pose = pose * ab_trans[0].inverse();
+      }
+      if (tip != tip_frame)
+      {
+        const robot_model::LinkModel *lm = getLinkModel(tip);
+        if (!lm)
+          return false;
+        const robot_model::LinkTransformMap &fixed_links = lm->getAssociatedFixedTransforms();
+        for (robot_model::LinkTransformMap::const_iterator it = fixed_links.begin() ; it != fixed_links.end() ; ++it)
+          if (Transforms::sameFrame(it->first->getName(), tip_frame))
+          {
+            tip = tip_frame;
+            pose = pose * it->second;
+            break;
+          }
+      }
+    }
+
+    // Check if this tip frame works
+    if (tip == tip_frame)
+    {
+      found_valid_frame = true;
+      break;
     }
   }
-  
-  if (tip != tip_frame)
+
+  // Make sure one of the tip frames worked
+  if (!found_valid_frame)
   {
-    logError("Cannot compute IK for tip reference frame '%s'", tip.c_str());
-    return false;
+      logError("Cannot compute IK for tip reference frame '%s'", tip.c_str());
+      return false;
   }
 
   // if no timeout has been specified, use the default one
@@ -1282,16 +1298,58 @@ bool moveit::core::RobotState::setFromIK(const JointModelGroup *jmg, const Eigen
     attempts = jmg->getDefaultIKAttempts();
   
   const std::vector<unsigned int> &bij = jmg->getKinematicsSolverJointBijection();
-  Eigen::Quaterniond quat(pose.rotation());
-  Eigen::Vector3d point(pose.translation());
-  geometry_msgs::Pose ik_query;
-  ik_query.position.x = point.x();
-  ik_query.position.y = point.y();
-  ik_query.position.z = point.z();
-  ik_query.orientation.x = quat.x();
-  ik_query.orientation.y = quat.y();
-  ik_query.orientation.z = quat.z();
-  ik_query.orientation.w = quat.w();
+
+  // Create poses for all tips a solver expects, even if not passed into this function
+  std::vector<geometry_msgs::Pose> ik_queries;
+  std::vector<std::string> tip_frames;
+  Eigen::Affine3d current_pose;
+
+  for (std::vector<std::string>::const_iterator tip_frame_it = solver->getTipFrames().begin();
+       tip_frame_it < solver->getTipFrames().end(); ++tip_frame_it)
+  {
+    std::string tip_frame = *tip_frame_it;
+
+    // remove the frame '/' if there is one, so we can avoid calling Transforms::sameFrame() which may copy strings more often that we need to
+    if (!tip_frame.empty() && tip_frame[0] == '/')
+      tip_frame = tip_frame.substr(1);
+
+    // check that this is not the current changed pose
+    if (tip != tip_frame)
+    {
+      // Get the pose of a different EE tip link
+      current_pose = getGlobalLinkTransform(tip_frame);
+
+      // bring the pose to the frame of the IK solver
+      const std::string &ik_frame = solver->getBaseFrame();
+      if (!Transforms::sameFrame(ik_frame, robot_model_->getModelFrame()))
+      {
+        const LinkModel *lm = getLinkModel((!ik_frame.empty() && ik_frame[0] == '/') ? ik_frame.substr(1) : ik_frame);
+        if (!lm)
+          return false;
+        current_pose = getGlobalLinkTransform(lm).inverse() * current_pose;
+      }
+    }
+    else
+    {
+      current_pose = pose;
+    }
+
+    // Convert Eigen pose to geometry_msgs pose
+    Eigen::Quaterniond quat(current_pose.rotation());
+    Eigen::Vector3d point(current_pose.translation());
+    geometry_msgs::Pose ik_query;
+    ik_query.position.x = point.x();
+    ik_query.position.y = point.y();
+    ik_query.position.z = point.z();
+    ik_query.orientation.x = quat.x();
+    ik_query.orientation.y = quat.y();
+    ik_query.orientation.z = quat.z();
+    ik_query.orientation.w = quat.w();
+
+    // Save into vectors
+    ik_queries.push_back(ik_query);
+    tip_frames.push_back(tip_frame);
+  }
 
   kinematics::KinematicsBase::IKCallbackFn ik_callback_fn;
   if (constraint)
@@ -1332,9 +1390,7 @@ bool moveit::core::RobotState::setFromIK(const JointModelGroup *jmg, const Eigen
     // compute the IK solution
     std::vector<double> ik_sol;
     moveit_msgs::MoveItErrorCodes error;
-    if (ik_callback_fn ?
-        solver->searchPositionIK(ik_query, seed, timeout, consistency_limits, ik_sol, ik_callback_fn, error, options) :
-        solver->searchPositionIK(ik_query, seed, timeout, consistency_limits, ik_sol, error, options))
+    if (solver->searchPositionIK(ik_queries, seed, timeout, consistency_limits, ik_sol, ik_callback_fn, error, options, this))
     {
       std::vector<double> solution(bij.size());
       for (std::size_t i = 0 ; i < bij.size() ; ++i)
@@ -1566,7 +1622,7 @@ double moveit::core::RobotState::computeCartesianPath(const JointModelGroup *gro
   const Eigen::Affine3d &start_pose = getGlobalLinkTransform(link);
   
   //the direction can be in the local reference frame (in which case we rotate it)
-  const Eigen::Vector3d &rotated_direction = global_reference_frame ? direction : start_pose.rotation() * direction;
+  const Eigen::Vector3d rotated_direction = global_reference_frame ? direction : start_pose.rotation() * direction;
 
   //The target pose is built by applying a translation to the start pose for the desired direction and distance
   Eigen::Affine3d target_pose = start_pose;
@@ -1661,12 +1717,18 @@ double moveit::core::RobotState::computeCartesianPath(const JointModelGroup *gro
     if (fabs(wp_percentage_solved - 1.0) < std::numeric_limits<double>::epsilon())
     {
       percentage_solved = (double)(i + 1) / (double)waypoints.size();
-      traj.insert(traj.end(), waypoint_traj.begin(), waypoint_traj.end());
+      std::vector<RobotStatePtr>::iterator start = waypoint_traj.begin();
+      if(i > 0 && !waypoint_traj.empty())
+        std::advance(start, 1);
+      traj.insert(traj.end(), start, waypoint_traj.end());
     }
     else
     {
       percentage_solved += wp_percentage_solved / (double)waypoints.size();
-      traj.insert(traj.end(), waypoint_traj.begin(), waypoint_traj.end());
+      std::vector<RobotStatePtr>::iterator start = waypoint_traj.begin();
+      if(i > 0 && !waypoint_traj.empty())
+        std::advance(start, 1);
+      traj.insert(traj.end(), start, waypoint_traj.end());
       break;
     }
   }

@@ -1,6 +1,6 @@
 <package>
   <name>moveit_core</name>
-  <version>0.6.9</version>
+  <version>0.6.10</version>
   <description>Core libraries used by MoveIt!</description>
   <author email="isucan@gmail.com">Ioan Sucan</author>
   <author email="robot.moveit@gmail.com">Sachin Chitta</author>
@@ -48,6 +48,8 @@
   <build_depend>roslib</build_depend>
   <build_depend>rostime</build_depend>
   <build_depend>cmake_modules</build_depend>
+  <test_depend>angles</test_depend>
+  <test_depend>tf_conversions</test_depend>
 
   <run_depend>libconsole-bridge-dev</run_depend>
   <run_depend>liburdfdom-dev</run_depend>

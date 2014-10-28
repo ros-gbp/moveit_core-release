@@ -1,3 +1,24 @@
+## moveit_core (indigo) - 0.6.10-0
+
+The packages in the `moveit_core` repository were released into the `indigo` distro by running `/usr/bin/bloom-release -r indigo -t indigo moveit_core` on `Tue, 28 Oct 2014 05:48:45 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+- upstream repository: https://github.com/ros-planning/moveit_core.git
+- release repository: https://github.com/ros-gbp/moveit_core-release.git
+- rosdistro version: `0.6.9-0`
+- old version: `0.6.9-0`
+- new version: `0.6.10-0`
+
+Versions of tools used:
+- bloom version: `0.5.12`
+- catkin_pkg version: `0.2.6`
+- rosdep version: `0.10.32`
+- rosdistro version: `0.3.6`
+- vcstools version: `0.1.35`
+
+
 ## moveit_core (indigo) - 0.6.9-0
 
 The packages in the `moveit_core` repository were released into the `indigo` distro by running `/usr/bin/bloom-release moveit_core --track indigo --rosdistro indigo --edit` on `Tue, 01 Jul 2014 02:47:12 -0000`

@@ -278,6 +278,13 @@ void moveit::core::JointModelGroup::setSubgroupNames(const std::vector<std::stri
     subgroup_names_set_.insert(subgroup_names_[i]);
 }
 
+void moveit::core::JointModelGroup::getSubgroups(std::vector<const JointModelGroup*>& sub_groups) const
+{
+  sub_groups.resize(subgroup_names_.size());
+  for (std::size_t i = 0 ; i < subgroup_names_.size() ; ++i)
+    sub_groups[i] = parent_model_->getJointModelGroup(subgroup_names_[i]);
+}
+
 bool moveit::core::JointModelGroup::hasJointModel(const std::string &joint) const
 {
   return joint_model_map_.find(joint) != joint_model_map_.end();
@@ -465,6 +472,46 @@ void moveit::core::JointModelGroup::setEndEffectorParent(const std::string &grou
 void moveit::core::JointModelGroup::attachEndEffector(const std::string &eef_name)
 {
   attached_end_effector_names_.push_back(eef_name);
+}
+
+bool moveit::core::JointModelGroup::getEndEffectorTips(std::vector<std::string> &tips) const
+{
+  // Get a vector of tip links
+  std::vector<const LinkModel*> tip_links;
+  if (!getEndEffectorTips(tip_links))
+    return false;
+
+  // Convert to string names
+  tips.clear();
+  for (std::size_t i = 0; i < tip_links.size(); ++i)
+  {
+    tips.push_back(tip_links[i]->getName());
+  }
+  return true;
+}
+
+bool moveit::core::JointModelGroup::getEndEffectorTips(std::vector<const LinkModel*> &tips) const
+{
+  for (std::size_t i = 0; i < getAttachedEndEffectorNames().size(); ++i)
+  {
+    const JointModelGroup *eef = parent_model_->getEndEffector(getAttachedEndEffectorNames()[i]);
+    if (!eef)
+    {
+      logError("Unable to find joint model group for eef");
+      return false;
+    }
+    const std::string &eef_parent = eef->getEndEffectorParentGroup().second;
+
+    const LinkModel* eef_link = parent_model_->getLinkModel(eef_parent);
+    if (!eef_link)
+    {
+      logError("Unable to find end effector link for eef");
+      return false;
+    }
+
+    tips.push_back(eef_link);
+  }
+  return true;
 }
 
 int moveit::core::JointModelGroup::getVariableGroupIndex(const std::string &variable) const

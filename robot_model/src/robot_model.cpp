@@ -113,9 +113,9 @@ void moveit::core::RobotModel::buildModel(const urdf::ModelInterface &urdf_model
     logDebug("... constructing joint group states"); 
     buildGroupStates(srdf_model);
 
-    // For debugging entire model
-    if (false)
-      printModelInfo(std::cout);
+    std::stringstream ss;
+    printModelInfo(ss);
+    logDebug("%s", ss.str().c_str());
   }
   else
     logWarn("No root link found");

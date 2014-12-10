@@ -1699,7 +1699,6 @@ bool moveit::core::RobotState::setFromIKSubgroups(const JointModelGroup *jmg, co
       }
     }
   }
-  return false;
 }
 
 double moveit::core::RobotState::computeCartesianPath(const JointModelGroup *group, std::vector<RobotStatePtr> &traj, const LinkModel *link,

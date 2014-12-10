@@ -1,3 +1,24 @@
+## moveit_core (hydro) - 0.5.10-0
+
+The packages in the `moveit_core` repository were released into the `hydro` distro by running `/usr/bin/bloom-release -r hydro -t hydro moveit_core` on `Wed, 10 Dec 2014 06:00:00 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+- upstream repository: https://github.com/ros-planning/moveit_core.git
+- release repository: https://github.com/ros-gbp/moveit_core-release.git
+- rosdistro version: `0.5.9-0`
+- old version: `0.5.9-0`
+- new version: `0.5.10-0`
+
+Versions of tools used:
+- bloom version: `0.5.15`
+- catkin_pkg version: `0.2.6`
+- rosdep version: `0.10.32`
+- rosdistro version: `0.4.0`
+- vcstools version: `0.1.35`
+
+
 ## moveit_core (indigo) - 0.6.12-0
 
 The packages in the `moveit_core` repository were released into the `indigo` distro by running `/usr/bin/bloom-release moveit_core -t indigo -r indigo` on `Thu, 04 Dec 2014 04:39:36 -0000`

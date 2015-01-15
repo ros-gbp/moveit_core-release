@@ -2,6 +2,11 @@
 Changelog for package moveit_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.14 (2015-01-15)
+-------------------
+* Add time factor to iterative_time_parametrization
+* Contributors: Dave Coleman, Michael Ferguson, kohlbrecher
+
 0.6.13 (2014-12-20)
 -------------------
 * add getShapePoints() to distance field

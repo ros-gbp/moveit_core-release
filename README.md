@@ -1,3 +1,24 @@
+## moveit_core (jade) - 0.6.15-0
+
+The packages in the `moveit_core` repository were released into the `jade` distro by running `/usr/bin/bloom-release -r jade -t jade moveit_core` on `Wed, 13 May 2015 03:46:43 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+- upstream repository: https://github.com/ros-planning/moveit_core.git
+- release repository: unknown
+- rosdistro version: `null`
+- old version: `null`
+- new version: `0.6.15-0`
+
+Versions of tools used:
+- bloom version: `0.5.20`
+- catkin_pkg version: `0.2.7`
+- rosdep version: `0.11.2`
+- rosdistro version: `0.4.1`
+- vcstools version: `0.1.36`
+
+
 ## moveit_core (hydro) - 0.5.11-0
 
 The packages in the `moveit_core` repository were released into the `hydro` distro by running `/usr/bin/bloom-release -r hydro -t hydro moveit_core` on `Thu, 22 Jan 2015 02:54:30 -0000`

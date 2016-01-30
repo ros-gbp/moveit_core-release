@@ -140,7 +140,7 @@ bool kinematic_constraints::JointConstraint::configure(const moveit_msgs::JointC
     joint_tolerance_above_ = jc.tolerance_above;
     joint_tolerance_below_ = jc.tolerance_below;
     joint_variable_index_ = robot_model_->getVariableIndex(joint_variable_name_);
-    
+
     // check if we have to wrap angles when computing distances
     joint_is_continuous_ = false;
     if (joint_model_->getType() == robot_model::JointModel::REVOLUTE)
@@ -1126,8 +1126,8 @@ kinematic_constraints::ConstraintEvaluationResult kinematic_constraints::Kinemat
                                                                                                         bool verbose) const
 {
   ConstraintEvaluationResult result(true, 0.0);
-  results.resize(joint_constraints_.size());
-  for (std::size_t i = 0 ; i < joint_constraints_.size() ; ++i)
+  results.resize(kinematic_constraints_.size());
+  for (std::size_t i = 0 ; i < kinematic_constraints_.size() ; ++i)
   {
     results[i] = kinematic_constraints_[i]->decide(state, verbose);
     result.satisfied = result.satisfied && results[i].satisfied;

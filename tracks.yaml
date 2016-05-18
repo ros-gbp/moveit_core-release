@@ -78,9 +78,9 @@ tracks:
       -i :{release_inc} --os-name debian --os-not-required
     - git-bloom-generate -y rosrpm --prefix release/:{ros_distro} :{ros_distro} -i
       :{release_inc}
-    devel_branch: indigo-devel
+    devel_branch: jade-devel
     last_version: 0.7.1
-    name: upstream_indigo
+    name: upstream
     patches: null
     release_inc: '0'
     release_repo_url: git@github.com:ros-gbp/moveit_core-release.git

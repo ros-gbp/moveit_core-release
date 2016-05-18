@@ -2,6 +2,49 @@
 Changelog for package moveit_core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.7.1 (2016-04-14)
+------------------
+* [fix] getStateAtDurationFromStart would never execute as the check for number of waypoints was inverted `#281 <https://github.com/ros-planning/moveit_core/issues/281>`_
+* [feat] Added maximum acceleration scaling factor `#273 <https://github.com/ros-planning/moveit_core/issues/273>`_
+* Contributors: Dave Coleman, Sam Pfeiffer, hemes
+
+0.7.0 (2016-01-30)
+------------------
+* Remove all trailing whitespace in moveit_core
+* Indigo: setJointVelocity and setJointEffort functions
+* New getOnlyOneEndEffectorTip() function
+* Added file and trajectory_msg to RobotState conversion functions
+* Fix issue #258 
+* Kinematic base updates
+* Indigo devel robot state conversions
+* Switched to boost::lexical_cast for reading in robot states from file
+* API Change of shape_tools
+* Fixed bug in KinematicConstraintSet::decide that makes it evaluate only joint_constraints.
+* Install static libs
+* Fixed bug in KinematicConstraintSet::decide that makes it evaluate only joint_constraints.
+* Prevent divide by zero
+* Allow a RobotTrajectory to be initialized with a pointer joint model group
+* Better documentation and formatting
+* New text file/stream to robot state conversion
+* added an ik_seed_state argument to the new getPositionIK(...) method
+* removed the 'f' float specifiers and corrected misspelled method name
+* fixed typo MULTIPLE_TIPS_NO_SUPPORTED -> MULTIPLE_TIPS_NOT_SUPPORTED
+* minor corrections in the getPositionIK(...) method description
+* This commit makes the following changes:/
+  - Added doxygen style documentation to new enumerations and KinematicResult struct
+  - Deprecated existing discretization member and it now uses a map that stores discretization values of each redundant joint
+  - Added support for multiple input poses in the getPositionIK(..) method that returns multiple joint solutions.
+* added new interface method for computing multiple ik solutions for a single pose
+* renamed enumeration namespace
+* fix_type_qualifiers_compiler_warnings
+  The gcc-compiler warns that the "const" qualifier is ignored when
+  returning by value. This patch removes unnecessary qualifiers and
+  compiler warnings emerging from them. It does not have any effect on the
+  functionality of the code.
+* Documented ordering of poses passed in
+* Fix build with  -DCATKIN_ENABLE_TESTING=OFF
+* Contributors: Alexis Ballier, Bastian Gaspers, Dave Coleman, Gary Servin, Ioan A Sucan, Levi Armstrong, Michael Ferguson, Mihai Pomarlan, Sachin Chitta, jrgnicho, ros-devel
+
 0.6.15 (2015-01-20)
 -------------------
 * add ptr/const ptr types for distance field
@@ -286,7 +329,7 @@ Changelog for package moveit_core
 * attempt to fix `#241 <https://github.com/ros-planning/moveit_core/issues/241>`_ from moveit_ros
 * update paths so that files are found in the globally installed moveit_resources package
 * remove magical 0.2 and use of velocity_map
-* Work on issue `#35 <https://github.com/ros-planning/moveit_core/issues/35>`_. 
+* Work on issue `#35 <https://github.com/ros-planning/moveit_core/issues/35>`_.
 
 0.3.19 (2013-05-02)
 -------------------
@@ -329,7 +372,7 @@ Changelog for package moveit_core
 * include velocities in conversions
 * Added more general computeCartesianPath, takes vector of waypoints
 * efficiency improvements
-  
+
 0.3.14 (2013-02-05)
 -------------------
 * initialize controller state by default
@@ -481,7 +524,7 @@ Changelog for package moveit_core
 ------------------
 * add processPlanningSceneWorldMsg()
 * Adding and fixing tests
-* Adding docs 
+* Adding docs
 * moves refineNormals to new file in collision_detection
 * Fixed bugs in PositionConstraint, documented Position and Orientation constraint, extended tests for Position and OrientationConstraint and started working on tests for VisibilityConstraint
 * more robust checking of joint names in joint constraints

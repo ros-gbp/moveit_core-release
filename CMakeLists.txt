@@ -19,14 +19,15 @@ COMPONENTS
   visualization_msgs
   roslib
   rostime
+  cmake_modules
 )
 find_package(console_bridge REQUIRED)
+find_package(Eigen REQUIRED)
 find_package(octomap REQUIRED)
 find_package(urdfdom REQUIRED)
 find_package(urdfdom_headers REQUIRED)
 
 find_package(PkgConfig REQUIRED)
-pkg_search_module(EIGEN3 REQUIRED eigen3)
 pkg_check_modules(LIBFCL REQUIRED fcl)
 find_library(LIBFCL_LIBRARIES_FULL ${LIBFCL_LIBRARIES} ${LIBFCL_LIBRARY_DIRS})
 set(LIBFCL_LIBRARIES "${LIBFCL_LIBRARIES_FULL}")
@@ -63,7 +64,6 @@ set(THIS_PACKAGE_INCLUDE_DIRS
 
 catkin_package(
   INCLUDE_DIRS
-    ${EIGEN3_INCLUDE_DIRS}
     ${THIS_PACKAGE_INCLUDE_DIRS}
     ${OCTOMAP_INCLUDE_DIRS}
   LIBRARIES
@@ -97,14 +97,14 @@ catkin_package(
     srdfdom
   DEPENDS
     Boost
+    Eigen
     urdfdom
     urdfdom_headers
     console_bridge
     )
 
-include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS}
+include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS}
                            ${Boost_INCLUDE_DIR}
-                           ${LIBFCL_INCLUDE_DIRS}
                            )
 
 include_directories(${THIS_PACKAGE_INCLUDE_DIRS}

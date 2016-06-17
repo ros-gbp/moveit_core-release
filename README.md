@@ -1,3 +1,26 @@
+## moveit_core (jade) - 0.8.2-0
+
+The packages in the `moveit_core` repository were released into the `jade` distro by running `/usr/bin/bloom-release --rosdistro jade --track jade moveit_core` on `Fri, 17 Jun 2016 21:32:41 -0000`
+
+The `moveit_core` package was released.
+
+Version of package(s) in repository `moveit_core`:
+
+- upstream repository: https://github.com/ros-planning/moveit_core.git
+- release repository: https://github.com/ros-gbp/moveit_core-release.git
+- rosdistro version: `0.8.1-0`
+- old version: `0.8.1-0`
+- new version: `0.8.2-0`
+
+Versions of tools used:
+
+- bloom version: `0.5.21`
+- catkin_pkg version: `0.2.10`
+- rosdep version: `0.11.5`
+- rosdistro version: `0.4.7`
+- vcstools version: `0.1.38`
+
+
 ## moveit_core (indigo) - 0.7.2-0
 
 The packages in the `moveit_core` repository were released into the `indigo` distro by running `/usr/bin/bloom-release --rosdistro indigo --track indigo moveit_core` on `Fri, 17 Jun 2016 21:27:32 -0000`
